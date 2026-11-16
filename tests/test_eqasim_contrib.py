@@ -143,8 +143,9 @@ def test_stage_without_urban_type_in_the_survey(tmp_path):
 
 # --------------------------------------------------------------------------- patches
 
+EQASIM = os.environ.get("EQASIM_PATH", "")
 needs_eqasim = pytest.mark.skipif(
-    not os.path.isdir(os.path.join(os.environ.get("EQASIM_PATH", ""), ".git")),
+    not EQASIM or not os.path.isdir(os.path.join(EQASIM, ".git")),
     reason="needs EQASIM_PATH pointing to a git checkout of eqasim-france")
 
 
@@ -156,8 +157,8 @@ def git(path, *arguments, **options):
 @pytest.mark.parametrize("patch", PATCHES)
 def test_patch_applies_to_the_checkout(patch):
     path = os.path.abspath(os.path.join(CONTRIB, "patches", patch))
-    forward = git(os.environ["EQASIM_PATH"], "apply", "--check", path)
-    already = git(os.environ["EQASIM_PATH"], "apply", "--reverse", "--check", path)
+    forward = git(EQASIM, "apply", "--check", path)
+    already = git(EQASIM, "apply", "--reverse", "--check", path)
     assert forward.returncode == 0 or already.returncode == 0, forward.stderr
 
 
@@ -167,9 +168,9 @@ def test_patch_applies_to_the_checkout(patch):
     ("25", True), ("17.0.9", True), ("25.0.1.1", True), ("21-ea", True), ("11.0.2", False), ("1.8.0_292", False)])
 def test_java_version_check_after_the_patch(tmp_path, version, accepted):
     # The released file, patched in a scratch folder.
-    released = git(os.environ["EQASIM_PATH"], "show", "v1.5.0:matsim/runtime/java.py")
+    released = git(EQASIM, "show", "v1.5.0:matsim/runtime/java.py")
     if released.returncode != 0:
-        released = git(os.environ["EQASIM_PATH"], "show", "HEAD:matsim/runtime/java.py")
+        released = git(EQASIM, "show", "HEAD:matsim/runtime/java.py")
     target = tmp_path / "matsim" / "runtime" / "java.py"
     target.parent.mkdir(parents=True)
     target.write_text(released.stdout)
