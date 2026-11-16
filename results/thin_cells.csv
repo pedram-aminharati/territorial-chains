@@ -1,0 +1,41 @@
+survey,donor_pool,urban_type,donors,share_in_thin_cells
+entd,"national, default attributes",central_city,4625,0.011854481001753533
+entd,"national, default attributes",suburb,6782,0.00844689080116207
+entd,"national, default attributes",isolated_city,1297,0.00859657512275692
+entd,"national, default attributes",none,5293,0.011575907144730058
+entd,"national, default attributes",all,17997,0.010237476456662275
+entd,"national, + urban type",central_city,4625,0.09133634205484248
+entd,"national, + urban type",suburb,6782,0.048247183216047686
+entd,"national, + urban type",isolated_city,1297,0.19253893023331908
+entd,"national, + urban type",none,5293,0.04350916635223443
+entd,"national, + urban type",all,17997,0.07208956501719031
+entd,"Loire-Atlantique only, default",central_city,694,0.24776858302422575
+entd,"Loire-Atlantique only, default",suburb,664,0.10339815165036677
+entd,"Loire-Atlantique only, default",isolated_city,186,0.1885183867301803
+entd,"Loire-Atlantique only, default",none,254,0.14201391927888016
+entd,"Loire-Atlantique only, default",all,1798,0.1725241256216985
+entd,"Loire-Atlantique only, + urban type",central_city,694,0.6549468967167469
+entd,"Loire-Atlantique only, + urban type",suburb,664,0.5312625217271736
+entd,"Loire-Atlantique only, + urban type",isolated_city,186,1.0
+entd,"Loire-Atlantique only, + urban type",none,254,0.881709820205986
+entd,"Loire-Atlantique only, + urban type",all,1798,0.6958144656973309
+emp,"national, default attributes",central_city,3572,0.05326851076650247
+emp,"national, default attributes",suburb,3857,0.02719949918852593
+emp,"national, default attributes",isolated_city,759,0.018962639954595854
+emp,"national, default attributes",none,2623,0.022611593878971766
+emp,"national, default attributes",all,10811,0.03414212433349155
+emp,"national, + urban type",central_city,3572,0.18170331619259758
+emp,"national, + urban type",suburb,3857,0.13603163946116784
+emp,"national, + urban type",isolated_city,759,0.5042755114221065
+emp,"national, + urban type",none,2623,0.12836322672113318
+emp,"national, + urban type",all,10811,0.17969234623943164
+emp,"Loire-Atlantique only, default",central_city,67,0.8614520287785435
+emp,"Loire-Atlantique only, default",suburb,85,0.8353756393927106
+emp,"Loire-Atlantique only, default",isolated_city,6,1.0
+emp,"Loire-Atlantique only, default",none,37,0.953668568514991
+emp,"Loire-Atlantique only, default",all,195,0.8746517500417751
+emp,"Loire-Atlantique only, + urban type",central_city,67,1.0
+emp,"Loire-Atlantique only, + urban type",suburb,85,1.0
+emp,"Loire-Atlantique only, + urban type",isolated_city,6,1.0
+emp,"Loire-Atlantique only, + urban type",none,37,1.0
+emp,"Loire-Atlantique only, + urban type",all,195,1.0

@@ -1,0 +1,5 @@
+# Shell scripts must keep Unix line endings, also when the repository is cloned on Windows.
+*.sh text eol=lf
+*.py text eol=lf
+# Patches must stay byte for byte as written, or they no longer apply.
+*.patch -text

@@ -1,0 +1,82 @@
+diff --git a/data/hts/edgt_44/cleaned.py b/data/hts/edgt_44/cleaned.py
+index 3f2cd4f..07966f7 100644
+--- a/data/hts/edgt_44/cleaned.py
++++ b/data/hts/edgt_44/cleaned.py
+@@ -9,6 +9,11 @@ This stage cleans the Loire Atlantique EDGT.
+ def configure(context):
+     context.stage("data.hts.edgt_44.raw")
+ 
++    if context.config("use_urban_type", False):
++        context.stage("data.spatial.urban_type")
++        context.config("data_path")
++        context.config("edgt_44_zones_path", "edgt_44_2015/07_denomination_perimetres_EDGT44_DTIR_D30_D10_D2.xls")
++
+ PURPOSE_MAP = {
+     "home": [1, 2],
+     "work": [11, 12, 13, 81],
+@@ -28,6 +33,15 @@ MODES_MAP = {
+     "walk": [1, 2] # Actually, 2 is not really explained, but we assume it is walk
+ }
+ 
++# Municipalities of the survey area which have been merged into a new one since 2015
++MERGED_MUNICIPALITIES = {
++    "44004": "44163", "44008": "44029", "44011": "44213", "44017": "44180",
++    "44034": "44213", "44040": "44005", "44059": "44021", "44060": "49160",
++    "44093": "44180", "44147": "44213", "44160": "44003", "44181": "44087",
++    "44191": "44180", "44219": "44180", "49069": "49126", "49172": "49126",
++    "49270": "49126", "49320": "49126", "49349": "49301", "49360": "49126",
++}
++
+ def execute(context):
+     df_households, df_persons, df_trips = context.stage("data.hts.edgt_44.raw")
+ 
+@@ -186,4 +200,33 @@ def execute(context):
+     # Fix activity types (because of inconsistent EGT data and removing in the timing fixing step)
+     hts.fix_activity_types(df_trips)
+ 
++    # Urban type
++    if context.config("use_urban_type"):
++        # The home is given as a fine zone (sector and zone), the table of zones
++        # which is published with the survey gives the municipality of each zone
++        df_zones = pd.read_excel("%s/%s" % (
++            context.config("data_path"), context.config("edgt_44_zones_path")
++        ), sheet_name = "ZF", dtype = str, engine = "calamine")[["ZF", "Id_commune"]]
++        df_zones.columns = ["zone_id", "commune_id"]
++
++        df_urban_type = context.stage("data.spatial.urban_type")[["commune_id", "urban_type"]].copy()
++        df_urban_type["commune_id"] = df_urban_type["commune_id"].astype(str)
++        df_urban_type["urban_type"] = df_urban_type["urban_type"].astype(str)
++
++        # Use the current municipality if the one of 2015 does not exist anymore
++        f_merged = ~df_zones["commune_id"].isin(df_urban_type["commune_id"])
++        df_zones.loc[f_merged, "commune_id"] = df_zones.loc[f_merged, "commune_id"].replace(MERGED_MUNICIPALITIES)
++
++        df_households["zone_id"] = df_households["MTIR"].str.zfill(3) + df_households["MP2"].str.zfill(3)
++        assert df_households["zone_id"].isin(df_zones["zone_id"]).all()
++
++        initial_count = len(df_households)
++        df_households = pd.merge(df_households, df_zones, on = "zone_id", how = "left")
++        df_households = pd.merge(df_households, df_urban_type, on = "commune_id", how = "left")
++        assert len(df_households) == initial_count
++
++        # A few households of the survey live outside of the departement and
++        # hence outside of the study area
++        df_households["urban_type"] = df_households["urban_type"].fillna("none").astype("category")
++
+     return df_households, df_persons, df_trips
+diff --git a/data/hts/edgt_44/filtered.py b/data/hts/edgt_44/filtered.py
+index df52ab8..b3c3760 100644
+--- a/data/hts/edgt_44/filtered.py
++++ b/data/hts/edgt_44/filtered.py
+@@ -35,7 +35,10 @@ def execute(context):
+         df_households = df_households[df_households["household_id"].isin(df_persons["household_id"])]
+ 
+     # Finish up
+-    df_households = df_households[hts.HOUSEHOLD_COLUMNS]
++    household_columns = hts.HOUSEHOLD_COLUMNS
++    if "urban_type" in df_households: household_columns = household_columns + ["urban_type"]
++
++    df_households = df_households[household_columns]
+     df_persons = df_persons[hts.PERSON_COLUMNS]
+     df_trips = df_trips[hts.TRIP_COLUMNS + ["routed_distance", "euclidean_distance"]]
+ 

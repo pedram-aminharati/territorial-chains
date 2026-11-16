@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "Territorial chains: a pilot study on eqasim"
+authors:
+  - family-names: Aminharati
+    given-names: Pedram
+    orcid: "https://orcid.org/0009-0008-2062-8571"
+version: 0.1.0
+date-released: 2026-11-15
+url: "https://pedram-aminharati.github.io/territorial-chains/"
+repository-code: "https://github.com/pedram-aminharati/territorial-chains"
+license: GPL-2.0-only

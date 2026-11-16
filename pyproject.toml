@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "territorial-chains"
+version = "0.1.0"
+description = "Territorial evaluation of activity chains in eqasim synthetic populations"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Pedram Aminharati" }]
+keywords = ["synthetic population", "activity chains", "eqasim", "MATSim", "travel survey"]
+dependencies = ["numpy", "pandas", "pyyaml"]
+
+[project.urls]
+Homepage = "https://pedram-aminharati.github.io/territorial-chains/"
+Repository = "https://github.com/pedram-aminharati/territorial-chains"
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "synpp"]     # synpp runs the eqasim stage in its test
+# Scoring scripts: population tables (parquet, geoparquet), the INSEE and EDGT workbooks,
+# zstd-compressed MATSim tables, IGN contours. They also run inside the eqasim-france
+# environment, which already has pandas, geopandas, pyarrow and synpp.
+analysis = ["pyarrow", "geopandas", "python-calamine", "zstandard", "py7zr"]
+models = ["pgmpy", "torch"]          # Bayesian network, transformer and variational autoencoder
+
+[tool.setuptools]
+packages = ["territorial_chains"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 150
+# The stage in eqasim_contrib/ is written for eqasim-france and follows that project's style.
+extend-exclude = ["eqasim_contrib"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+# E731/E741: short lambdas and one-letter names are used on purpose in the analysis scripts.
+# B905: zip() over arrays built together. B023: closures used inside the loop that defines them.
+ignore = ["E731", "E741", "B905", "B023"]

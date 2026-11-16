@@ -1,0 +1,31 @@
+diff --git a/matsim/runtime/java.py b/matsim/runtime/java.py
+index 1c4dabf..f3be1b6 100644
+--- a/matsim/runtime/java.py
++++ b/matsim/runtime/java.py
+@@ -1,5 +1,5 @@
+ import subprocess as sp
+-import os, shutil
++import os, shutil, re
+ 
+ def configure(context):
+     context.config("java_binary", "java")
+@@ -66,7 +66,15 @@ def validate(context):
+             "-version"
+         ], stderr = sp.STDOUT)
+     version_number = str(java_version.splitlines()[0]).split('"')[1]
+-    major, minor, _ = version_number.split('.')
+-    
+-    if int(major) < 17:
+-        raise RuntimeError("A Java JDK of at least version 17 is needed. A Java SDK with version %s was found" % version_number)  
++
++    # Only the major version is needed. Depending on the distribution the version
++    # has one component ("25"), three ("17.0.9") or four ("25.0.1.1").
++    match = re.match(r"\d+", version_number)
++
++    if match is None:
++        raise RuntimeError("Cannot read the Java version from: %s" % version_number)
++
++    major = int(match.group(0))
++
++    if major < 17:
++        raise RuntimeError("A Java JDK of at least version 17 is needed. A Java SDK with version %s was found" % version_number)

@@ -1,0 +1,11 @@
+split,method,edges
+0,bayesnet_learned,age_class > secondary; mobile > primary; primary > secondary; primary > tours; secondary > tours; socioprofessional_class > mobile; socioprofessional_class > primary
+0,bayesnet_territory,age_class > mobile; age_class > secondary; mobile > primary; primary > secondary; primary > tours; secondary > tours; socioprofessional_class > primary; urban_type > mobile
+1,bayesnet_learned,any_cars > tours; mobile > primary; primary > secondary; primary > tours; socioprofessional_class > mobile; socioprofessional_class > primary; tours > secondary
+1,bayesnet_territory,age_class > mobile; any_cars > tours; mobile > primary; primary > secondary; primary > tours; socioprofessional_class > primary; tours > secondary; urban_type > mobile
+2,bayesnet_learned,mobile > primary; primary > secondary; primary > tours; socioprofessional_class > mobile; socioprofessional_class > primary; tours > secondary
+2,bayesnet_territory,age_class > mobile; mobile > primary; primary > secondary; primary > tours; socioprofessional_class > primary; tours > secondary; urban_type > mobile
+3,bayesnet_learned,age_class > mobile; mobile > primary; primary > secondary; primary > tours; socioprofessional_class > primary; tours > secondary
+3,bayesnet_territory,age_class > mobile; mobile > primary; primary > secondary; primary > tours; socioprofessional_class > primary; tours > secondary; urban_type > mobile
+4,bayesnet_learned,mobile > primary; primary > secondary; primary > tours; secondary > tours; sex > secondary; socioprofessional_class > mobile; socioprofessional_class > primary
+4,bayesnet_territory,age_class > mobile; mobile > primary; primary > secondary; primary > tours; secondary > tours; sex > secondary; socioprofessional_class > primary; urban_type > mobile

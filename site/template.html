@@ -1,0 +1,1387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Territorial chains: does a synthetic population know where its people live?</title>
+<meta name="description" content="A pilot study measuring how eqasim synthetic populations reproduce urban and rural differences in daily activity chains.">
+<meta property="og:title" content="Territorial chains: does a synthetic population know where its people live?">
+<meta property="og:description" content="A pilot study on the open-source eqasim pipeline for Loire-Atlantique: activity chains by territory, two reference surveys, MATSim runs, seed repeats.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231c5cab'/%3E%3Cpath d='M6 22 L13 13 L19 18 L26 9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    color-scheme: light;
+    --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10); --wash:rgba(11,11,11,.04);
+    --ref:#52514e; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --accent:#1c5cab; --track:#e1e0d9;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      color-scheme: dark;
+      --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+      --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10); --wash:rgba(255,255,255,.05);
+      --ref:#c3c2b7; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+      --accent:#6da7ec; --track:#2c2c2a;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--page);color:var(--ink);
+       font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+
+  nav{position:sticky;top:0;z-index:20;background:var(--page);border-bottom:1px solid var(--border)}
+  nav .wrap{display:flex;align-items:center;gap:18px;height:52px;overflow-x:auto;white-space:nowrap}
+  nav .brand{font-weight:650;color:var(--ink);margin-right:auto}
+  nav a{color:var(--ink2);font-size:14px}
+
+  header.hero{padding:56px 0 30px}
+  .kicker{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  h1{font-size:clamp(30px,5vw,46px);line-height:1.12;font-weight:700;letter-spacing:-.015em;margin:10px 0 14px;max-width:18ch}
+  .lead{font-size:18px;color:var(--ink2);max-width:62ch}
+  .heroband{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr);gap:16px;margin-top:30px}
+  .herofig{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px}
+  .herofig .num{font-size:64px;font-weight:700;line-height:1;letter-spacing:-.02em}
+  .herofig p{color:var(--ink2);margin-top:10px;font-size:15px}
+  .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .tile .label{font-size:13px;color:var(--ink2)}
+  .tile .value{font-size:26px;font-weight:650;margin-top:4px;line-height:1.15}
+  .tile .note{font-size:13px;color:var(--muted);margin-top:4px}
+
+  section{padding:38px 0;border-top:1px solid var(--border)}
+  h2{font-size:26px;line-height:1.2;letter-spacing:-.01em;margin-bottom:8px}
+  h3{font-size:17px;margin:22px 0 6px}
+  .sectionlead{color:var(--ink2);max-width:70ch;margin-bottom:18px}
+  p + p{margin-top:10px}
+  .prose{max-width:70ch} .prose ul{margin:10px 0 0 20px} .prose li{margin-bottom:6px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;background:var(--wash);padding:1px 5px;border-radius:4px}
+  pre{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;overflow-x:auto;font-size:13.5px;line-height:1.5;margin-top:12px}
+  pre code{background:none;padding:0}
+
+  figure.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin:18px 0}
+  .figtitle{font-weight:650;font-size:16px}
+  .figsub{color:var(--ink2);font-size:14px;margin-top:2px;max-width:80ch}
+  .chart{margin-top:14px}
+  .panels{display:grid;gap:18px}
+  .panels.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .panels.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .paneltitle{font-size:13.5px;font-weight:600;margin-bottom:6px}
+  .paneltitle span{color:var(--muted);font-weight:400}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  svg text{font-family:inherit;fill:var(--ink2);font-size:12px}
+  svg .tick{fill:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+  svg .val{fill:var(--ink);font-size:12px;font-variant-numeric:tabular-nums}
+  svg .gridline{stroke:var(--grid);stroke-width:1}
+  svg .axisline{stroke:var(--axis);stroke-width:1}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;font-size:13px;color:var(--ink2)}
+  .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+  .legend i.box{height:10px;width:10px;border-radius:2px}
+  figcaption{font-size:13px;color:var(--muted);margin-top:12px;max-width:85ch}
+  details.tableview{margin-top:12px;font-size:13px}
+  details.tableview summary{cursor:pointer;color:var(--ink2);width:fit-content;max-width:100%}
+  table{border-collapse:collapse;margin-top:8px;font-size:13px;width:100%}
+  th,td{text-align:right;padding:5px 10px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--ink2);font-weight:600}
+  .tablescroll{overflow-x:auto}
+  #varianttable th:nth-child(-n+3),#varianttable td:nth-child(-n+3){text-align:left}
+
+  .meters{display:grid;gap:10px;margin-top:14px}
+  .meter{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(0,3fr) 54px;gap:12px;align-items:center;font-size:14px}
+  .meter .name b{font-weight:650} .meter .name span{color:var(--ink2)}
+  .meter .track{height:8px;border-radius:4px;background:var(--track);overflow:hidden}
+  .meter .fill{height:100%;border-radius:4px;background:var(--s1)}
+  .meter .pct{text-align:right;font-variant-numeric:tabular-nums}
+
+  .flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:14px}
+  .step b{display:block;font-size:14.5px;margin-bottom:2px} .step span{color:var(--ink2)}
+  .step.mark{border-color:var(--s1)}
+
+  .status{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid var(--border);color:var(--ink2);white-space:nowrap}
+  .status.done::before{content:"\2713\00a0"} .status.run::before{content:"\25B6\00a0"} .status.next::before{content:"\25CB\00a0"}
+
+  #tip{position:fixed;z-index:50;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--border);
+       border-radius:8px;padding:8px 10px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.12);max-width:280px;display:none}
+  #tip .t{color:var(--ink2);margin-bottom:4px}
+  #tip .r{display:flex;align-items:center;gap:8px;justify-content:space-between}
+  #tip .r i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+  #tip .r b{font-variant-numeric:tabular-nums}
+  #tip .r span{color:var(--ink2)}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;margin:2px 0 16px}
+  .ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+  .seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+  .seg button{font:inherit;font-size:13px;padding:6px 11px;border:0;border-right:1px solid var(--border);background:none;color:var(--ink2);cursor:pointer}
+  .seg button:last-child{border-right:0}
+  .seg button:hover{background:var(--wash)}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface);font-weight:600}
+  select{font:inherit;font-size:13.5px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);max-width:100%}
+  .seg button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .unit{stroke:var(--surface);stroke-width:.8;cursor:default}
+  .unit.faint{opacity:.45}
+  .unit.on{stroke:var(--ink);stroke-width:2;opacity:1}
+  .outline{fill:none;stroke:var(--ink2);stroke-width:1;pointer-events:none;opacity:.75}
+  svg text.town{font-size:11.5px;font-weight:600;fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+  .scale{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);font-variant-numeric:tabular-nums;margin-top:12px;flex-wrap:wrap}
+  .scale .bar{width:180px;height:10px;border-radius:3px}
+  .scale .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .scale .gap{width:14px}
+  .rowhit.on rect{fill:var(--wash)}
+  .cards3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+  .xcard{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--page)}
+  .xcard .head{font-size:13.5px;font-weight:650}
+  .xcard .big{font-size:34px;font-weight:700;line-height:1.05;margin-top:10px;letter-spacing:-.01em}
+  .xcard .cap{font-size:13px;color:var(--ink2);margin-top:2px}
+  .xcard .lbl{font-size:12px;color:var(--muted);margin-top:12px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .chip{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--axis);color:var(--ink)}
+  .chip.off{color:var(--muted);text-decoration:line-through;border-color:var(--grid)}
+  .stack{display:flex;height:14px;gap:2px;margin-top:8px}
+  .stack i{display:block;height:100%;border-radius:2px;min-width:0}
+  .kv{display:flex;justify-content:space-between;font-size:13.5px;margin-top:6px;color:var(--ink2)}
+  .kv b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+  footer{padding:30px 0 60px;border-top:1px solid var(--border);color:var(--muted);font-size:13.5px}
+  .hit{fill:transparent;cursor:default}
+  @media (max-width:820px){
+    .heroband{grid-template-columns:1fr} .tiles{grid-template-columns:1fr 1fr}
+    .panels.c3,.panels.c2{grid-template-columns:1fr} .flow{grid-template-columns:1fr 1fr}
+    .meter{grid-template-columns:1fr 54px} .meter .track{grid-column:1 / -1;order:3}
+    .cards3{grid-template-columns:1fr}
+  }
+  @media (max-width:520px){ .tiles{grid-template-columns:1fr} .flow{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="#top">Territorial chains</a>
+  <a href="#donors">Donors</a><a href="#explorer">Explorer</a><a href="#home">Staying home</a><a href="#local">Regional survey</a><a href="#chains">Chains</a><a href="#distance">Distances</a><a href="#simulation">Simulation</a><a href="#map">Map</a><a href="#seeds">Stability</a><a href="#generators">Generators</a>
+  <a href="#surveys">Surveys</a><a href="#method">Method</a><a href="#roadmap">Roadmap</a>
+  <a href="{{repo}}">Code</a>
+</div></nav>
+
+<div class="wrap" id="top">
+<header class="hero">
+  <div class="kicker">Pilot study · eqasim-france v1.5.0 · Loire-Atlantique</div>
+  <h1>Does a synthetic population know where its people live?</h1>
+  <p class="lead">Agent-based transport models start from a synthetic population in which every person carries a
+  day of activities. This study measures whether those days differ between urban and rural residents the way they
+  do in French travel surveys, using the open-source eqasim pipeline on Nantes and its hinterland. The answer
+  turns out to depend on which survey is taken as the reference.</p>
+
+  <div class="heroband">
+    <div class="herofig">
+      <div class="num">{{rural_same_A}}</div>
+      <p>of rural residents receive the day of a rural survey respondent in eqasim's default configuration.
+      With its urban-type option switched on, {{rural_same_C}} do.</p>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="label">Rural residents staying home, national survey</div><div class="value">{{obs_rural_home}}</div><div class="note">ENTD 2008, weekday, rural France</div></div>
+      <div class="tile"><div class="label">Same, regional survey</div><div class="value">{{loc_home_rural}}</div><div class="note">EDGT 2015, rural Loire-Atlantique</div></div>
+      <div class="tile"><div class="label">Same, default population</div><div class="value">{{A_rural_home}}</div><div class="note">close to the regional survey</div></div>
+      <div class="tile"><div class="label">Same, urban-type option</div><div class="value">{{C_rural_home}}</div><div class="note">follows the national survey</div></div>
+      <div class="tile"><div class="label">Synthetic persons scored</div><div class="value">{{persons}}</div><div class="note">per variant, 10% sample</div></div>
+      <div class="tile"><div class="label">Stay-home share read from EMP 2019</div><div class="value">{{emp_person}} or {{emp_day}}</div><div class="note">person weights or day weights</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="question">
+  <h2>The question</h2>
+  <div class="prose">
+    <p>eqasim builds a population from the census and gives each person the recorded day of a survey respondent
+    who resembles them. This is statistical matching: the two people share sex, car ownership, age class,
+    socio-professional class and, when enough respondents exist, département. A cell needs 20 respondents; below
+    that, attributes are dropped starting from the end of the list.</p>
+    <p>Territory is last on that list. So the working hypothesis was simple: where respondents are scarce, which is
+    exactly in small towns and rural communes, the place a person lives is the first thing the matching forgets.</p>
+    <p>A second question came up on the way and turned out to matter as much: against which survey should the
+    population of one département be judged, the national survey split by type of territory, or the département's
+    own survey?</p>
+  </div>
+  <div class="flow">
+    <div class="step"><b>1. Census persons</b><span>Households and persons for the study area, with home commune.</span></div>
+    <div class="step mark"><b>2. Statistical matching</b><span>Each person receives the activity chain of one survey respondent. This study examines this step.</span></div>
+    <div class="step"><b>3. Locations</b><span>Work, school and secondary activities are placed in space.</span></div>
+    <div class="step"><b>4. Population</b><span>Persons, activities and trips, ready for simulation.</span></div>
+  </div>
+</section>
+
+<section id="donors">
+  <h2>Whose day does a resident receive?</h2>
+  <p class="sectionlead">Every synthetic person can be traced back to the survey respondent whose day they were
+  given. Each grid below reads row by row: for residents of one kind of place, where their donors live.</p>
+
+  <div class="controls">
+    <div class="ctl"><span id="donorsurvey-label">Source survey</span>
+      <div class="seg" id="donorsurvey" role="group" aria-labelledby="donorsurvey-label"></div></div>
+  </div>
+
+  <figure class="card">
+    <div class="figtitle">Donor territory by home territory</div>
+    <div class="figsub">Share of residents (rows) whose donor lives in each urban type (columns). A population that
+    respects territory puts its weight on the diagonal.</div>
+    <div class="chart panels c3" id="donorgrid"></div>
+    <figcaption>ENTD 2008 as source survey, {{persons}} matched persons per variant. With default attributes every
+    row is nearly the same: all territories draw from one donor mix. With the urban-type option, {{isolated_rural_C}}
+    of isolated-city residents still receive a rural donor, because the census withholds the commune of people in
+    small municipalities and the pipeline labels them rural before it places them. The switch above shows the same
+    grids for the populations built from EMP 2019 (variants D and E).</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="donorgrid-table"></div></details>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">What the urban-type option costs</div>
+    <div class="figsub">Share of donors who live in Loire-Atlantique itself. Matching on territory type pulls donors
+    from the whole country.</div>
+    <div class="meters" id="localmeters"></div>
+  </figure>
+</section>
+
+<section id="explorer">
+  <h2>Try it: how one resident finds a donor</h2>
+  <p class="sectionlead">eqasim looks for survey respondents who share all of a resident's attributes. If it finds
+  fewer than 20, it drops the last attribute and tries again. Choose a resident and see whom each design ends up
+  drawing from. The pools below are recomputed from the {{exp_all}} ENTD respondents with the pipeline's own rule;
+  the same code reproduces the matching levels eqasim logged for variants A, B and C.</p>
+
+  <div class="controls" id="explorer-controls"></div>
+
+  <figure class="card">
+    <div class="figtitle">The donor pool of this resident under three designs</div>
+    <div class="figsub">The large figure is the chance that the donor lives in the same kind of place as the resident.
+    The bar shows where the pool's respondents live, weighted as the pipeline weights them.</div>
+    <div class="cards3" id="explorer-cards"></div>
+    <div class="legend" id="explorer-legend"></div>
+    <figcaption>Design A can only draw on {{exp_local}} respondents: the {{exp_dept}} who live in Loire-Atlantique,
+    minus the {{exp_dropped}} who left the département during their survey day, whom eqasim's local filter removes.
+    Under design C the home type is the one the pipeline reads from the census, which is rural for every resident of
+    a municipality under 10,000 inhabitants (see the map below).</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="explorer-table"></div></details>
+  </figure>
+</section>
+
+<section id="home">
+  <h2>Staying at home</h2>
+  <p class="sectionlead">The share of people who make no trip on a weekday is the simplest chain indicator and the
+  one with the clearest territorial gradient in the national survey: {{obs_suburb_home}} in suburbs against
+  {{obs_rural_home}} in rural communes. The regional survey of Loire-Atlantique does not show that gradient:
+  between {{loc_home_low}} and {{loc_home_high}} in every kind of place.</p>
+
+  <figure class="card">
+    <div class="figtitle">Share of residents who stay home on a weekday, by home territory</div>
+    <div class="figsub">Survey values against each generated population. Both panels share one vertical scale.
+    The dashed line is the regional survey (EDGT Loire-Atlantique 2015).</div>
+    <div class="chart panels c2" id="homelines"></div>
+    <div class="legend" id="homelines-legend"></div>
+    <figcaption>Left: default matching (A, B) is flat near 9% in every territory, which is where the regional
+    survey is; the urban-type option (C) follows the national survey. Right: populations built from EMP 2019 put about {{D_home}} of people at home because the pipeline
+    reads the survey with person weights; with the survey's day weights the share is {{emp_day}}.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="homelines-table"></div></details>
+  </figure>
+</section>
+
+<section id="local">
+  <h2>Which survey is right for Loire-Atlantique?</h2>
+  <p class="sectionlead">Up to here the populations are judged against the national survey, split by type of
+  territory. Loire-Atlantique also has its own household travel survey, EDGT 2015, with {{loc_respondents}}
+  respondents. It was read through eqasim's own cleaning stage and each respondent was given the urban type of the
+  home commune. On staying home, the two surveys disagree.</p>
+
+  <figure class="card">
+    <div class="figtitle">Share of people staying home on a weekday, in three samples</div>
+    <div class="figsub">By type of home commune. Marks are estimates, bars 95% bootstrap intervals.</div>
+    <div class="chart" id="localhome"></div>
+    <div class="legend" id="localhome-legend"></div>
+    <figcaption>Nationally, rural residents stay home more often ({{obs_rural_home}}). In Loire-Atlantique they do
+    not: {{loc_home_rural}} in the regional survey ({{loc_home_rural_ci}}), and {{e44_home_rural}} among the
+    national survey's own rural respondents living in the département ({{e44_home_rural_ci}}, only {{e44_rural_n}}
+    people). Two independent samples agree that the département stays home less than France as a whole
+    ({{loc_home_all}} and {{e44_home_all}} against {{nat_home_all}}) and shows no rural excess.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="localhome-table"></div></details>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">The same populations, scored against each survey</div>
+    <div class="figsub">Hellinger distance between generated and observed chain distributions (0 is identical).
+    Darker is worse. One scale for both grids.</div>
+    <div class="chart panels c2" id="localfid"></div>
+    <figcaption>Against the national survey the urban-type option (C) is the best of the three everywhere. Against
+    the regional survey it is the worst everywhere: for rural residents {{loc_fid_rural_C}} against
+    {{loc_fid_rural_A}} for the default, and the order is the same in all five seeds. The option does what it is
+    built for, it gives rural residents rural donors, but {{nonlocal_C}} of those donors live elsewhere in France,
+    and they bring a national rural pattern that neither local sample shows. Type of territory is not a sufficient
+    description of a territory.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="localfid-table"></div></details>
+  </figure>
+
+  <div class="prose">
+    <p><b>What this does and does not show.</b> The surveys differ in more than place: seven years apart, and the
+    regional survey was run face to face in the three agglomerations and by telephone elsewhere, so survey mode and
+    territory are partly confounded in it. The regional survey also records more activities per person, which sets
+    every population built from the national survey further from it. And the urban type of regional respondents
+    comes from today's urban units, not from the survey file. What holds despite this is the direction: both
+    samples from the département contradict the national gradient in staying home.</p>
+  </div>
+</section>
+
+<section id="chains">
+  <h2>Activity chains</h2>
+  <p class="sectionlead">A chain is the ordered list of a person's activities. The comparison below follows the
+  eqasim authors' own validation, which sets the most frequent chains of the population against the survey, and
+  adds the breakdown by territory that their analysis does not have.</p>
+
+  <figure class="card">
+    <div class="figtitle">Most frequent chains: national survey against two generated populations</div>
+    <div class="figsub">Share of residents with each chain, for the eight chains most frequent in the national survey.</div>
+    <div class="chart panels c2" id="topchains"></div>
+    <div class="legend" id="topchains-legend"></div>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="topchains-table"></div></details>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">Error on the chain distribution, by variant and territory</div>
+    <div class="figsub">Hellinger distance between each population and the survey it was matched from, by urban
+    type (0 is identical; 25 most frequent chains plus a pooled remainder). Darker is worse.</div>
+    <div class="chart" id="fidelity"></div>
+    <figcaption>With default attributes the error is largest in isolated cities and rural communes. The urban-type
+    option brings the rural error from {{fid_rural_A}} to {{fid_rural_C}}. This is the distance to the national
+    survey; against the regional survey the order reverses (previous section).</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="fidelity-table"></div></details>
+  </figure>
+
+  <figure class="card" id="gapcard">
+    <div class="figtitle">Is the difference between rural and central-city residents kept?</div>
+    <div class="figsub">Rural residents minus central-city residents, in each survey and in the populations matched
+    from the national survey. Bars on A and C are the range over {{gap_seeds}} seeds.</div>
+    <div class="chart panels c3" id="gaps"></div>
+    <figcaption>Fidelity inside a territory does not say whether the difference between territories survives.
+    Here it is measured directly. Both surveys find that rural residents who go out make fewer home-based tours
+    ({{gap_tours_nat}} and {{gap_tours_reg}}) and travel further. Every variant keeps the distance gap, which
+    comes from where people live and work. Only C reproduces the gap in tours ({{gap_tours_C}}, against
+    {{gap_tours_A}} for A). On staying home the surveys disagree, {{gap_home_nat}} nationally and
+    {{gap_home_reg}} in the regional survey: A and B show almost no gap, as the regional survey does, and C
+    shows {{gap_home_C}}, more than the national survey.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="gaps-table"></div></details>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">How many persons are matched on every attribute</div>
+    <div class="figsub">As reported by the pipeline. The last attribute in the list is the département.</div>
+    <div class="meters" id="matchmeters"></div>
+  </figure>
+</section>
+
+<section id="distance">
+  <h2>Distances: where the pipeline already works</h2>
+  <p class="sectionlead">Distance is the strongest territorial contrast in the surveys. In eqasim it does not come
+  from the matched chain: work and school places are drawn from census commuting flows and the other activities
+  are placed afterwards. That step keeps the gradient whatever the matching design.</p>
+
+  <figure class="card">
+    <div class="figtitle">Straight-line distance travelled per mobile person, by home territory</div>
+    <div class="figsub">Kilometres per weekday. Survey distances are converted to straight-line with the pipeline's
+    own factor of 1.3.</div>
+    <div class="chart panels c2" id="distlines"></div>
+    <div class="legend" id="distlines-legend"></div>
+    <figcaption>The rural minus central-city gap is reproduced in every variant, and here the national and the
+    regional survey agree. Levels sit below both surveys in all territories. A likely reason is that survey means
+    include long trips leaving the area while the population is generated for a single département.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="distlines-table"></div></details>
+  </figure>
+</section>
+
+<section id="simulation">
+  <h2>Does it matter once the population is simulated?</h2>
+  <p class="sectionlead">Populations A (eqasim defaults) and C (urban type added) were each run through MATSim on the
+  same road network, the same public-transport timetables and the same mode-choice parameters. Any difference between
+  the two runs therefore comes from the activity chains. eqasim's own convergence rule stopped the runs after
+  {{sim_iter_A}} and {{sim_iter_C}} iterations.</p>
+
+  <figure class="card">
+    <div class="figtitle">Simulated travel per resident, by home territory</div>
+    <div class="figsub">All matched residents, travelling or not. One weekday, 10% sample.</div>
+    <div class="chart panels c2" id="simlines"></div>
+    <div class="legend" id="simlines-legend"></div>
+    <figcaption>The two designs disagree on how often people travel: with the urban type, rural residents make
+    {{sim_trips_rural}} trips ({{sim_trips_central}} in central cities). They agree on how far people drive: car
+    kilometres per resident differ by {{sim_carkm_rural}} in rural communes and {{sim_carkm_all}} overall. Rural
+    trips are fewer but {{sim_triplen_rural}} on average. A likely reason is the one seen for distances above: work
+    and school destinations come from census commuting flows, not from the matched chain.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="simlines-table"></div></details>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">Change from A to C, by home territory</div>
+    <div class="figsub">Relative change for the per-resident quantities; percentage points for the mode shares of trips.</div>
+    <div class="tablescroll" id="simchange"></div>
+    <figcaption>Read the differences, not the levels. The mode-choice model is eqasim's Île-de-France calibration,
+    the timetables are those in force in November 2026, and the figures above come from one run: car-kilometre differences
+    of up to {{sim_carkm_max}} by territory are small, and one run cannot say whether they are real. The repeats
+    over seeds below answer that.</figcaption>
+  </figure>
+</section>
+
+<section id="map">
+  <h2>Where it shows</h2>
+  <p class="sectionlead">The same populations, drawn on the {{map_groups}} intercommunalités of Loire-Atlantique and
+  their {{map_communes}} communes. Left, eqasim's default (A); right, with the urban type added (C). Both maps share
+  one colour scale.</p>
+
+  <div class="controls">
+    <div class="ctl"><span id="mapmetric-label">Measure</span>
+      <div class="seg" id="mapmetric" role="group" aria-labelledby="mapmetric-label"></div></div>
+    <div class="ctl"><span id="maplevel-label">Geography</span>
+      <div class="seg" id="maplevel" role="group" aria-labelledby="maplevel-label"></div></div>
+  </div>
+
+  <figure class="card">
+    <div class="figtitle" id="maptitle"></div>
+    <div class="figsub" id="mapsub"></div>
+    <div class="chart panels c2" id="maps"></div>
+    <div class="scale" id="mapscale"></div>
+    <div class="chart panels c2" id="mapbelow"></div>
+    <div class="legend" id="mapbelow-legend"></div>
+    <figcaption>With default matching the share staying home is the same everywhere: between {{map_A_low}} and
+    {{map_A_high}} across the {{map_groups}} intercommunalités. With the urban type it runs from {{map_C_low}} in
+    {{map_C_low_name}} to {{map_C_high}} in {{map_C_high_name}}. The regional survey sides with the flat map.
+    The donor measure shows the limit of that option
+    commune by commune: in {{map_blind}} communes that INSEE classes as urban, home to {{map_blind_share}} of
+    residents, nobody receives a donor from their own kind of place, because the census does not name the commune of
+    people living in municipalities under 10,000 inhabitants. At commune level the 10% sample is thin:
+    {{map_small}} communes have fewer than {{map_small_n}} sampled residents and are drawn faded.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="map-table"></div></details>
+  </figure>
+</section>
+
+<section id="seeds">
+  <h2>How stable is this?</h2>
+  <p class="sectionlead">Everything above comes from one random seed. Variants A and C were generated again with four
+  other seeds, each redrawing the 10% census sample, the matching and the locations, and two of those were also
+  simulated. That gives {{seed_pop}} populations and {{seed_sim}} simulations per variant. Dots are means over seeds;
+  bars run from the lowest to the highest seed.</p>
+
+  <figure class="card">
+    <div class="figtitle">Populations: mean and range over {{seed_pop}} seeds</div>
+    <div class="figsub">By home territory. Left, share of residents staying home. Right, Hellinger distance between the
+    generated chain distribution and the national survey's (lower is better).</div>
+    <div class="chart panels c2" id="seedpop"></div>
+    <div class="legend" id="seedpop-legend"></div>
+    <figcaption>The ranges are narrower than the dots in most rows. Rural residents staying home: {{seed_A_rural}} with
+    default matching ({{seed_A_rural_range}}) against {{seed_C_rural}} with the urban type ({{seed_C_rural_range}}).
+    Neither result depends on the seed, and nor does the reversal against the regional survey: there the rural
+    distance is {{seed_loc_A}} for the default and {{seed_loc_C}} with the urban type, in that order in every seed.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="seedpop-table"></div></details>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">Simulations: mean and range over {{seed_sim}} seeds</div>
+    <div class="figsub">By home territory, per resident. Each simulation uses the population of the same seed.</div>
+    <div class="chart panels c2" id="seedsim"></div>
+    <div class="legend" id="seedsim-legend"></div>
+    <figcaption>Rural residents make {{seed_trips_rural}} trips with the urban type, in every seed
+    ({{seed_trips_rural_range}}). Car kilometres per resident also differ in the same direction in every seed, by a
+    few percent: {{seed_car_central}} in central cities, {{seed_car_suburb}} in suburbs, {{seed_car_isolated}} in
+    isolated cities and {{seed_car_rural}} in rural communes ({{seed_car_rural_range}}). Over the whole département
+    they nearly cancel: {{seed_car_all}} ({{seed_car_all_range}}). Three simulations per variant are few; the
+    direction is established, the size only roughly.</figcaption>
+    <details class="tableview"><summary>Table view: change from A to C, mean and range over seeds</summary><div class="tablescroll" id="seeddiff-table"></div></details>
+  </figure>
+</section>
+
+<section id="generators">
+  <h2>Can a generative model do better than matching?</h2>
+  <p class="sectionlead">Four families were trained on the same survey respondents and asked to propose a day for
+  respondents they had never seen, from their attributes alone: eqasim's statistical matching, a Bayesian network,
+  a small transformer that writes the chain one activity at a time, and a variational autoencoder that first draws
+  a summary of the whole day and then writes it. Each family was run with and without the home territory. The test was repeated over {{gen_splits}} random splits; dots are means and bars the range.</p>
+
+  <figure class="card">
+    <div class="figtitle">Rural residents staying home: what each generator produces</div>
+    <div class="figsub">Held-out rural respondents, ENTD 2008. The vertical line is what those respondents reported.</div>
+    <div class="chart" id="genhome"></div>
+    <div class="legend" id="gen-legend"></div>
+    <figcaption>What decides the result is whether the model sees territory, not which model it is. The
+    {{gen_blind_count}} territory-blind generators all land near {{gen_blind_rural}} against {{gen_obs_rural}}
+    observed; the territory-aware ones give {{gen_aware_low}} to {{gen_aware_high}}.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="genhome-table"></div></details>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">Error on the chain distribution</div>
+    <div class="figsub">Hellinger distance to the held-out respondents (lower is better). The vertical line is the
+    floor: the distance between two samples of the survey itself.</div>
+    <div class="chart panels c2" id="generror"></div>
+    <figcaption>No model is clearly better than matching with the urban type on this test. For rural residents the
+    Bayesian network with a territory edge and the autoencoder with territory are level with it
+    ({{gen_bn_rural}} and {{gen_vae_rural}} against {{gen_match_rural}}, with overlapping ranges) and the
+    transformer is behind ({{gen_ar_rural}}). The two neural models are the only ones that write chains no
+    respondent reported ({{gen_novel}} and {{gen_vae_novel}} of their output). Structure search on the data never linked territory to the chain
+    ({{gen_edges}} of {{gen_splits}} splits): the edge had to be imposed, which a tabular network makes costly and a
+    neural model makes cheap. This benchmark is national: it asks whether a
+    generator can reproduce the national survey's pattern. Whether that pattern should be imposed on one département
+    is the question of the section on the regional survey.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="generror-table"></div></details>
+  </figure>
+</section>
+
+<section id="surveys">
+  <h2>What the surveys say</h2>
+  <p class="sectionlead">Before judging a generator, the contrast has to be measured in the data. Both national
+  surveys were read through eqasim's own cleaning code, weighted, and split by INSEE urban-unit status.</p>
+
+  <figure class="card">
+    <div class="figtitle">Where urban and rural days differ (ENTD 2008, weekday)</div>
+    <div class="figsub">Point estimates with 95% bootstrap intervals over respondents.</div>
+    <div class="chart panels c3" id="surveydots"></div>
+    <figcaption>Immobility, distance and the number of home-based tours separate rural from urban. The number of
+    activities and the order of purposes differ much less: between most pairs of urban types the divergence of chain
+    distributions is within what shuffled labels produce. Distances are means and include long trips made that day. The regional survey agrees with this picture for
+    distance and tours, not for immobility (see the section on the regional survey).</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="surveydots-table"></div></details>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">Donors run out quickly</div>
+    <div class="figsub">Share of people whose matching cell holds fewer than 20 survey respondents, the threshold
+    below which the pipeline drops attributes. Loire-Atlantique has {{donors_entd}} diary respondents in ENTD and
+    {{donors_emp}} in EMP.</div>
+    <div class="tablescroll" id="thintable"></div>
+  </figure>
+
+  <figure class="card">
+    <div class="figtitle">EMP 2019: one survey, two answers</div>
+    <div class="figsub">Share of people at home on a weekday, depending on the weight used.</div>
+    <div class="meters" id="empmeters"></div>
+    <figcaption>EMP diaries describe a day on which the respondent travelled; the {{emp_no_diary}} respondents
+    without a diary are those who stayed in every weekday. The file carries a day weight, <code>POND_JOUR</code>,
+    which the pipeline does not read. The statistical office's note on the public files prescribes that day weight
+    for local mobility; applying its rule to people instead of trips gives the {{emp_day}} above. The note itself
+    gives no rule for the share of people who stay home.</figcaption>
+  </figure>
+</section>
+
+<section id="method">
+  <h2>Method and reproducibility</h2>
+  <div class="prose">
+    <p>Five populations were generated for Loire-Atlantique with eqasim-france v1.5.0 at a 10% sampling rate, then
+    scored by one script against the survey they were matched from and, for the ENTD variants, against the
+    regional survey as well. A synthetic person's territory is the urban-unit
+    status of the home commune. Observed and generated chains go through the same code.</p>
+  </div>
+  <div class="tablescroll"><table id="varianttable"></table></div>
+  <h3>Two measures</h3>
+  <div class="prose"><ul>
+    <li><b>Fidelity inside a territory:</b> distance between the generated and observed distribution for people living in the same kind of place.</li>
+    <li><b>Contrast retention between territories:</b> the survey says rural and urban days differ by some amount; the share of that difference found again in the population. A generator can look fine on average and fail this one.</li>
+  </ul></div>
+  <h3>Run it</h3>
+<pre><code>bash scripts/download_data.sh                 # open data from INSEE, IGN, data.gouv.fr
+bash scripts/run_variants.sh A_entd_local B_entd_national C_entd_urban D_emp_national E_emp_urban
+python scripts/survey_contrasts.py ~/eqasim-france data results
+python scripts/regional_reference.py ~/eqasim-france data results    # regional survey (EDGT 2015)
+python scripts/evaluate_population.py output/C_entd_urban entd data/urban_type/UU2020_au_01-01-2026.zip results
+python scripts/benchmark_generators.py ~/eqasim-france results 5
+bash scripts/download_simulation_data.sh      # OpenStreetMap extract and six GTFS timetables
+bash scripts/run_simulation.sh A_entd_local_sim C_entd_urban_sim
+bash scripts/run_seeds.sh                     # A and C again with four other seeds, two of them simulated
+python scripts/summarise_seeds.py results
+python scripts/evaluate_simulation.py output/C_entd_urban_sim data/urban_type/UU2020_au_01-01-2026.zip results
+python scripts/export_page_data.py output data/urban_type/UU2020_au_01-01-2026.zip data/iris_2024/CONTOURS-IRIS_3-0__GPKG_LAMB93_FXX_2024-01-01.7z
+python site/build_site.py                     # rebuilds this page from results/
+pytest                                        # 46 tests</code></pre>
+
+  <h3>How it builds on published work</h3>
+  <div class="prose"><ul>
+    <li><b>Hörl and Balac (2021)</b> describe the matching and validate chains by ranking the most frequent ones against the survey; the top-chain figure here does the same, by territory. Their paper also notes that the census gives residence only at département level for municipalities under 10,000 inhabitants, which is the origin of the small-town effect measured above.</li>
+    <li>The same paper handles sampling noise with repeated realisations over random seeds, reporting the mean and range. The Stability section does the same for variants A and C: five populations and three simulations each.</li>
+    <li><b>Joubert and de Waal (2020)</b> generate chains with Bayesian networks and <b>Shone and Hillel (2024)</b> with deep generative models, judging output by its distribution and by how much of it is new. Both families are implemented here (a Bayesian network, a transformer and a variational autoencoder) and scored against matching on held-out respondents, with repeated splits.</li>
+  </ul></div>
+</section>
+
+<section id="roadmap">
+  <h2>Status and limits</h2>
+  <div class="tablescroll"><table>
+    <thead><tr><th>Step</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Indicator library, weighted statistics, fidelity and contrast measures, with tests</td><td><span class="status done">done</span></td></tr>
+      <tr><td>ENTD 2008 and EMP 2019 analysed by urban type</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Five eqasim variants generated and scored</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Distances by territory</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Generators (Bayesian network, transformer, variational autoencoder) against matching on held-out respondents</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Variants A and C simulated with MATSim (road network from OpenStreetMap, six GTFS timetables)</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Map by intercommunalité and commune; matching explorer</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Variants A and C repeated over five random seeds (three of them simulated)</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Regional survey (EDGT Loire-Atlantique 2015) as a second reference</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Territory analysis written as an eqasim stage, urban type for the regional survey and Java version fix as patches (<code>eqasim_contrib/</code>), tested on saved populations and on the survey files</td><td><span class="status done">done</span></td></tr>
+      <tr><td>The stage and the patches run inside a complete eqasim run</td><td><span class="status next">next</span></td></tr>
+      <tr><td>Populations built from the regional survey itself (variants F and G)</td><td><span class="status next">next</span></td></tr>
+
+
+    </tbody>
+  </table></div>
+  <h3>Limits</h3>
+  <div class="prose"><ul>
+    <li>Two references are used and they disagree on staying home: the national survey by urban type (2008) and the regional survey (2015). Neither is the population's own year, 2022, and they differ in protocol.</li>
+    <li>Variants A and C have five seeds (three simulated). Variants B, D and E, the donor grids, the top chains and the maps show one seed.</li>
+    <li>In the variants with national donors, 23 to 105 matched persons belong to a household that leaves the pipeline without a home commune. They are left out of every table by territory; the cause has not been investigated.</li>
+    <li>The simulation uses mode-choice parameters calibrated for Île-de-France and current timetables. Its levels are not a forecast for Loire-Atlantique; only differences between variants are read.</li>
+    <li>Urban-unit status has four classes; a finer typology (density grid, accessibility) may show contrasts this one hides.</li>
+    <li>The EMP weighting result follows the rule in the statistical office's note on the public files, applied here to people; the note does not treat immobility itself.</li>
+    <li>In the simulations about 3% of planned trips are missing from the output; the affected persons' days stop early. The cause was not established.</li>
+  </ul></div>
+</section>
+
+<footer>
+  Pedram Aminharati · built {{built}} from <a href="{{repo}}">the project repository</a>.
+  Pipeline: <a href="https://github.com/eqasim-org/eqasim-france">eqasim-france</a> v1.5.0.
+  Data: INSEE, IGN, SDES (ENTD 2008, EMP 2019), Département de Loire-Atlantique (EDGT 2015),
+  transport.data.gouv.fr and OpenStreetMap contributors, under their open licences.
+</footer>
+</div>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const T = DATA.territories.map(t => t.label);
+const SERIES = {
+  obs:{name:'National survey', color:'var(--ref)', short:'National'},
+  loc:{name:'Regional survey (EDGT 2015)', color:'var(--ref)', short:'Regional', dash:'5 4', diamond:true},
+  A:{name:'A · default, local donors', color:'var(--s1)'},
+  B:{name:'B · default, national donors', color:'var(--s2)'},
+  C:{name:'C · urban type added', color:'var(--s3)'},
+  D:{name:'D · default, national donors', color:'var(--s4)'},
+  E:{name:'E · urban type added', color:'var(--s5)'}
+};
+const RAMP_LIGHT = ['#cde2fb','#b7d3f6','#9ec5f4','#86b6ef','#6da7ec','#5598e7','#3987e5','#2a78d6','#256abf','#1c5cab','#184f95','#104281','#0d366b'];
+const dark = () => matchMedia('(prefers-color-scheme: dark)').matches;
+const pct = (x, d = 0) => (100 * x).toFixed(d) + '%';
+const NS = 'http://www.w3.org/2000/svg';
+
+function svg(tag, attrs = {}, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function h(tag, attrs = {}, text) {
+  const e = document.createElement(tag);
+  for (const k in attrs) { if (k === 'class') e.className = attrs[k]; else if (k === 'style') e.style.cssText = attrs[k]; else e.setAttribute(k, attrs[k]); }
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function hex2rgb(x) { const n = parseInt(x.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function ramp(t) {            // sequential blue; in dark mode the anchor flips so more is lighter
+  const steps = dark() ? RAMP_LIGHT.slice(2).reverse() : RAMP_LIGHT;
+  const p = Math.max(0, Math.min(1, t)) * (steps.length - 1), i = Math.floor(p), f = p - i;
+  const a = hex2rgb(steps[i]), b = hex2rgb(steps[Math.min(i + 1, steps.length - 1)]);
+  const c = a.map((v, k) => Math.round(v + (b[k] - v) * f));
+  const lum = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  return {fill: `rgb(${c[0]},${c[1]},${c[2]})`, ink: lum > 0.58 ? '#0b0b0b' : '#ffffff'};
+}
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById('tip');
+function showTip(evt, title, rows) {
+  tip.replaceChildren();
+  if (title) tip.appendChild(h('div', {class: 't'}, title));
+  rows.forEach(r => {
+    const row = h('div', {class: 'r'}), left = h('span');
+    if (r.color) left.appendChild(h('i', {style: 'background:' + r.color}));
+    left.appendChild(document.createTextNode(r.name));
+    row.appendChild(left); row.appendChild(h('b', {}, r.value)); tip.appendChild(row);
+  });
+  tip.style.display = 'block';
+  const w = tip.offsetWidth, hh = tip.offsetHeight;
+  let x = evt.clientX + 14, y = evt.clientY + 14;
+  if (x + w > innerWidth - 8) x = evt.clientX - w - 14;
+  if (y + hh > innerHeight - 8) y = evt.clientY - hh - 14;
+  tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+function hover(node, title, rows, focusable = true) {
+  if (focusable) node.setAttribute('tabindex', '0');
+  node.addEventListener('pointermove', e => showTip(e, title, rows));
+  node.addEventListener('pointerleave', hideTip);
+  node.addEventListener('focus', () => { const b = node.getBoundingClientRect(); showTip({clientX: b.right, clientY: b.top}, title, rows); });
+  node.addEventListener('blur', hideTip);
+}
+function table(id, head, rows) {
+  const t = h('table'), th = h('thead'), tr = h('tr');
+  head.forEach(x => tr.appendChild(h('th', {}, x))); th.appendChild(tr); t.appendChild(th);
+  const tb = h('tbody');
+  rows.forEach(r => { const row = h('tr'); r.forEach(x => row.appendChild(h('td', {}, x))); tb.appendChild(row); });
+  t.appendChild(tb); document.getElementById(id).replaceChildren(t);
+}
+function legend(id, keys, box) {
+  const el = document.getElementById(id); el.replaceChildren();
+  keys.forEach(k => { const s = h('span'); s.appendChild(h('i', {class: box ? 'box' : '', style: 'background:' + (SERIES[k].dash && !box
+    ? 'repeating-linear-gradient(90deg,' + SERIES[k].color + ' 0 4px,transparent 4px 7px)' : SERIES[k].color)})); s.appendChild(document.createTextNode(SERIES[k].name)); el.appendChild(s); });
+}
+
+/* ---------- heat grid ---------- */
+function heatGrid(parent, {title, sub, rows, cols, values, max, fmt, rowHead, labelW = 84, cellH = 38}) {
+  const box = h('div');
+  if (title) { const p = h('div', {class: 'paneltitle'}, title + ' '); if (sub) p.appendChild(h('span', {}, sub)); box.appendChild(p); }
+  const top = 24, cw = 62, W = labelW + cw * cols.length, H = top + cellH * rows.length;
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': (title || '') + ' heat grid'});
+  cols.forEach((c, j) => s.appendChild(svg('text', {x: labelW + cw * j + cw / 2, y: 14, 'text-anchor': 'middle', class: 'tick'}, c)));
+  rows.forEach((r, i) => {
+    s.appendChild(svg('text', {x: labelW - 8, y: top + cellH * i + cellH / 2 + 4, 'text-anchor': 'end'}, r));
+    cols.forEach((c, j) => {
+      const v = values[i][j], col = ramp(v / max);
+      const g = svg('g');
+      g.appendChild(svg('rect', {x: labelW + cw * j + 1, y: top + cellH * i + 1, width: cw - 2, height: cellH - 2, rx: 4, fill: col.fill}));
+      const tx = svg('text', {x: labelW + cw * j + cw / 2, y: top + cellH * i + cellH / 2 + 4, 'text-anchor': 'middle'}, fmt(v));
+      tx.style.fill = col.ink; tx.style.fontVariantNumeric = 'tabular-nums';
+      g.appendChild(tx);
+      hover(g, (rowHead || '') + r, [{name: c, value: fmt(v)}]);
+      s.appendChild(g);
+    });
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+
+/* ---------- lines over the four territories ---------- */
+function lineChart(parent, {title, sub, series, ymax, yfmt}) {
+  const box = h('div');
+  const p = h('div', {class: 'paneltitle'}, title + ' '); if (sub) p.appendChild(h('span', {}, sub)); box.appendChild(p);
+  const W = 460, H = 270, m = {l: 40, r: 58, t: 10, b: 30};
+  const x = i => m.l + (W - m.l - m.r) * i / (T.length - 1);
+  const y = v => m.t + (H - m.t - m.b) * (1 - v / ymax);
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': title});
+  for (let k = 0; k <= 4; k++) {
+    const v = ymax * k / 4;
+    s.appendChild(svg('line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: k ? 'gridline' : 'axisline'}));
+    s.appendChild(svg('text', {x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick'}, yfmt(v)));
+  }
+  T.forEach((t, i) => s.appendChild(svg('text', {x: x(i), y: H - 8, 'text-anchor': i === 0 ? 'start' : i === T.length - 1 ? 'end' : 'middle', class: 'tick'}, t)));
+  series.forEach(sr => {
+    const d = sr.values.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+    const def = SERIES[sr.key];
+    s.appendChild(svg('path', {d, fill: 'none', stroke: def.color, 'stroke-width': sr.key === 'obs' ? 2.5 : 2, 'stroke-linejoin': 'round', 'stroke-linecap': def.dash ? 'butt' : 'round', ...(def.dash ? {'stroke-dasharray': def.dash} : {})}));
+    sr.values.forEach((v, i) => s.appendChild(def.diamond
+      ? svg('rect', {x: x(i) - 4, y: y(v) - 4, width: 8, height: 8, transform: `rotate(45 ${x(i)} ${y(v)})`, fill: def.color, stroke: 'var(--surface)', 'stroke-width': 2})
+      : svg('circle', {cx: x(i), cy: y(v), r: 4.5, fill: def.color, stroke: 'var(--surface)', 'stroke-width': 2})));
+  });
+  // direct labels at the right end, pushed apart when they would collide
+  const ends = series.map(sr => ({key: sr.key, y0: y(sr.values[T.length - 1])})).sort((a, b) => a.y0 - b.y0);
+  ends.forEach((e, i) => { e.y = i && e.y0 - ends[i - 1].y < 13 ? ends[i - 1].y + 13 : e.y0; });
+  ends.forEach(e => {
+    if (Math.abs(e.y - e.y0) > 1) s.appendChild(svg('line', {x1: x(T.length - 1) + 6, y1: e.y0, x2: x(T.length - 1) + 12, y2: e.y, stroke: 'var(--axis)', 'stroke-width': 1}));
+    s.appendChild(svg('text', {x: x(T.length - 1) + 14, y: e.y + 4, class: 'val'}, SERIES[e.key].short || e.key));
+  });
+  // crosshair and one tooltip listing every series at that territory
+  const cross = svg('line', {y1: m.t, y2: H - m.b, stroke: 'var(--axis)', 'stroke-width': 1, visibility: 'hidden'});
+  s.appendChild(cross);
+  T.forEach((t, i) => {
+    const bw = (W - m.l - m.r) / (T.length - 1);
+    const r = svg('rect', {x: x(i) - bw / 2, y: m.t, width: bw, height: H - m.t - m.b, class: 'hit'});
+    const rows = series.map(sr => ({name: SERIES[sr.key].name, value: yfmt(sr.values[i], 1), color: SERIES[sr.key].color}));
+    hover(r, t, rows);
+    r.addEventListener('pointermove', () => { cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible'); });
+    r.addEventListener('pointerleave', () => cross.setAttribute('visibility', 'hidden'));
+    s.appendChild(r);
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+
+/* ---------- grouped horizontal bars (top chains) ---------- */
+const WORDS = {h: 'home', w: 'work', e: 'school', s: 'shop', l: 'leisure', o: 'other'};
+const chainName = c => c === 'h' ? 'stayed home' : c.split('').map(x => WORDS[x]).join(' · ');
+function chainBars(parent, {title, rows, keys, xmax}) {
+  const box = h('div'); box.appendChild(h('div', {class: 'paneltitle'}, title));
+  const labelW = 178, bar = 6, gap = 2, group = keys.length * (bar + gap) + 12, W = 460, top = 6;
+  const H = top + group * rows.length + 22, x = v => labelW + (W - labelW - 40) * v / xmax;
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': title});
+  for (let k = 0; k <= 4; k++) {
+    const v = xmax * k / 4;
+    s.appendChild(svg('line', {x1: x(v), x2: x(v), y1: top, y2: H - 22, class: k ? 'gridline' : 'axisline'}));
+    s.appendChild(svg('text', {x: x(v), y: H - 6, 'text-anchor': 'middle', class: 'tick'}, pct(v)));
+  }
+  rows.forEach((r, i) => {
+    const y0 = top + group * i + 6;
+    s.appendChild(svg('text', {x: labelW - 8, y: y0 + (keys.length * (bar + gap)) / 2 + 2, 'text-anchor': 'end'}, chainName(r.chain)));
+    const g = svg('g');
+    keys.forEach((k, j) => {
+      const w = Math.max(1, x(r[k]) - x(0));
+      g.appendChild(svg('path', {d: `M${x(0)} ${y0 + j * (bar + gap)} h${w - 3} a3 3 0 0 1 3 3 v0 a3 3 0 0 1 -3 3 h${-(w - 3)} z`, fill: SERIES[k].color}));
+    });
+    g.appendChild(svg('rect', {x: 0, y: y0 - 5, width: W, height: group, class: 'hit'}));
+    hover(g, chainName(r.chain), keys.map(k => ({name: SERIES[k].name, value: pct(r[k], 1), color: SERIES[k].color})));
+    s.appendChild(g);
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+
+/* ---------- dots with intervals ---------- */
+function dotCI(parent, {title, values, fmt, pad = 0.15}) {
+  const box = h('div'); box.appendChild(h('div', {class: 'paneltitle'}, title));
+  const W = 300, H = 210, m = {l: 14, r: 14, t: 26, b: 28};
+  const lo = Math.min(...values.map(v => v[1])), hi = Math.max(...values.map(v => v[2])), span = hi - lo;
+  const y = v => m.t + (H - m.t - m.b) * (1 - (v - (lo - span * pad)) / (span * (1 + 2 * pad)));
+  const x = i => m.l + (W - m.l - m.r) * (i + 0.5) / T.length;
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': title});
+  s.appendChild(svg('line', {x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, class: 'axisline'}));
+  values.forEach((v, i) => {
+    const g = svg('g');
+    g.appendChild(svg('line', {x1: x(i), x2: x(i), y1: y(v[1]), y2: y(v[2]), stroke: 'var(--ref)', 'stroke-width': 2, 'stroke-linecap': 'round'}));
+    g.appendChild(svg('circle', {cx: x(i), cy: y(v[0]), r: 5, fill: 'var(--s1)', stroke: 'var(--surface)', 'stroke-width': 2}));
+    g.appendChild(svg('text', {x: x(i), y: y(v[2]) - 8, 'text-anchor': 'middle', class: 'val'}, fmt(v[0])));
+    g.appendChild(svg('text', {x: x(i), y: H - 9, 'text-anchor': 'middle', class: 'tick'}, T[i].replace(' city', '')));
+    g.appendChild(svg('rect', {x: x(i) - 30, y: m.t - 20, width: 60, height: H - m.t - m.b + 20, class: 'hit'}));
+    hover(g, T[i], [{name: 'Estimate', value: fmt(v[0])}, {name: '95% interval', value: fmt(v[1]) + ' to ' + fmt(v[2])}]);
+    s.appendChild(g);
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+
+/* ---------- dot and range per method, against a reference line ---------- */
+function forest(parent, {title, rows, ref, refLabel, fmt, xmin, xmax}) {
+  const box = h('div'); if (title) box.appendChild(h('div', {class: 'paneltitle'}, title));
+  const labelW = 196, rowH = 30, top = 26, W = 500, H = top + rowH * rows.length + 26;
+  const x = v => labelW + (W - labelW - 46) * (v - xmin) / (xmax - xmin);
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': title || 'methods compared'});
+  for (let k = 0; k <= 4; k++) {
+    const v = xmin + (xmax - xmin) * k / 4;
+    s.appendChild(svg('line', {x1: x(v), x2: x(v), y1: top, y2: H - 26, class: 'gridline'}));
+    s.appendChild(svg('text', {x: x(v), y: H - 8, 'text-anchor': 'middle', class: 'tick'}, fmt(v)));
+  }
+  s.appendChild(svg('line', {x1: x(ref), x2: x(ref), y1: top - 6, y2: H - 26, stroke: 'var(--ref)', 'stroke-width': 2}));
+  s.appendChild(svg('text', {x: x(ref), y: 12, 'text-anchor': 'middle', class: 'val'}, refLabel + ' ' + fmt(ref, 1)));
+  rows.forEach((r, i) => {
+    const y = top + rowH * i + rowH / 2, color = r.aware ? 'var(--s1)' : 'var(--s2)', g = svg('g');
+    g.appendChild(svg('text', {x: labelW - 10, y: y + 4, 'text-anchor': 'end'}, r.name));
+    g.appendChild(svg('line', {x1: x(r.v[1]), x2: x(r.v[2]), y1: y, y2: y, stroke: color, 'stroke-width': 2, 'stroke-linecap': 'round'}));
+    g.appendChild(svg('circle', {cx: x(r.v[0]), cy: y, r: 5, fill: color, stroke: 'var(--surface)', 'stroke-width': 2}));
+    g.appendChild(svg('text', {x: x(r.v[2]) + 8, y: y + 4, class: 'val'}, fmt(r.v[0], 1)));
+    g.appendChild(svg('rect', {x: 0, y: y - rowH / 2, width: W, height: rowH, class: 'hit'}));
+    hover(g, r.name, [{name: 'Mean', value: fmt(r.v[0], 1)}, {name: 'Range over splits', value: fmt(r.v[1], 1) + ' to ' + fmt(r.v[2], 1)}, {name: refLabel, value: fmt(ref, 1)}]);
+    s.appendChild(g);
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+
+/* ---------- gap between two territories: surveys as reference marks, variants with their seed range ---------- */
+function gapPanel(parent, {title, rows, fmt, tick, step}) {
+  const box = h('div'); box.appendChild(h('div', {class: 'paneltitle'}, title));
+  const all = rows.flatMap(r => r.v), lo = Math.floor(Math.min(0, ...all) / step + 1e-9) * step, hi = Math.ceil(Math.max(0, ...all) / step - 1e-9) * step;
+  const labelW = 104, rowH = 24, top = 4, W = 330, right = 64, H = top + rows.length * rowH + 24;
+  const x = v => labelW + (W - labelW - right) * (v - lo) / (hi - lo);
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': title + ', rural minus central city'});
+  for (let k = 0; k <= Math.round((hi - lo) / step); k++) {
+    const v = lo + k * step, zero = Math.abs(v) < 1e-9;
+    s.appendChild(svg('line', {x1: x(v), x2: x(v), y1: top, y2: H - 24, class: zero ? 'axisline' : 'gridline'}));
+    s.appendChild(svg('text', {x: x(v), y: H - 8, 'text-anchor': 'middle', class: 'tick'}, zero ? '0' : tick(v)));
+  }
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + rowH / 2, g = svg('g'), [mean, low, high] = r.v;
+    g.appendChild(svg('text', {x: 0, y: y + 4}, r.name));
+    if (r.shape) g.appendChild(mark(r.shape === 'dot' ? '' : r.shape, x(mean), y));
+    else {
+      if (high > low) {
+        g.appendChild(svg('line', {x1: x(low), x2: x(high), y1: y, y2: y, stroke: r.color, 'stroke-width': 2, 'stroke-linecap': 'round'}));
+        [low, high].forEach(v => g.appendChild(svg('line', {x1: x(v), x2: x(v), y1: y - 4, y2: y + 4, stroke: r.color, 'stroke-width': 2})));
+      }
+      g.appendChild(svg('circle', {cx: x(mean), cy: y, r: 4.5, fill: r.color, stroke: 'var(--surface)', 'stroke-width': 2}));
+    }
+    g.appendChild(svg('text', {x: x(Math.max(high, mean)) + 9, y: y + 4, class: 'val'}, fmt(mean)));
+    g.appendChild(svg('rect', {x: 0, y: y - rowH / 2, width: W, height: rowH, class: 'hit'}));
+    const detail = [{name: 'Rural minus central city', value: fmt(mean), color: r.color}];
+    if (high > low) detail.push({name: 'Lowest seed', value: fmt(low)}, {name: 'Highest seed', value: fmt(high)});
+    hover(g, r.full || r.name, detail);
+    s.appendChild(g);
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+
+/* ---------- meters ---------- */
+/* ---------- controls ---------- */
+const STATE = {donorSurvey: 'entd', metric: 'immobile', level: 'epci',
+               profile: {sex: 0, age: 4, occ: 7, car: 1, urban: 3}};
+function segmented(id, options, current, onPick) {
+  const el = document.getElementById(id); el.replaceChildren();
+  options.forEach(([key, label]) => {
+    const b = h('button', {type: 'button', 'aria-pressed': key === current ? 'true' : 'false'}, label);
+    b.addEventListener('click', () => { if (key !== current) onPick(key); });
+    el.appendChild(b);
+  });
+}
+// Home territory as an ordered ramp, rural lightest: index follows T (central, suburb, isolated, rural)
+const ORD_LIGHT = ['#0d366b', '#1c5cab', '#3987e5', '#86b6ef'], ORD_DARK = ['#b7d3f6', '#6da7ec', '#2a78d6', '#184f95'];
+const ord = i => (dark() ? ORD_DARK : ORD_LIGHT)[i];
+
+/* ---------- matching explorer ---------- */
+const AGES = ['5 to 14', '15 to 29', '30 to 44', '45 to 59', '60 to 74', '75 and over'];
+const OCCS = {1: 'Farmer', 2: 'Self-employed, shopkeeper, business owner', 3: 'Manager or professional', 4: 'Intermediate occupation',
+              5: 'Clerical or service employee', 6: 'Manual worker', 7: 'Retired', 8: 'No occupation (pupils, students, others)'};
+const ATTR = {urban: 'home type', sex: 'sex', car: 'car', age: 'age', occ: 'occupation', dept: 'département'};
+const DESIGNS = [
+  {key: 'A', pool: c => c[5] === 1, cols: ['sex', 'car', 'age', 'occ', 'dept']},
+  {key: 'B', pool: () => true, cols: ['sex', 'car', 'age', 'occ', 'dept']},
+  {key: 'C', pool: () => true, cols: ['urban', 'sex', 'car', 'age', 'occ', 'dept']}];
+function donorPool(design, P) {
+  const test = {sex: c => c[0] === P.sex, car: c => c[1] === P.car, age: c => c[2] === P.age, occ: c => c[3] === P.occ,
+                dept: c => c[4] === 1, urban: c => c[6] === P.urban};
+  const source = DATA.explorer.cells.filter(design.pool);
+  let used = 0, cells = source, first = null;
+  for (let level = design.cols.length; level >= 1; level--) {
+    const subset = source.filter(c => design.cols.slice(0, level).every(a => test[a](c)));
+    const n = subset.reduce((s, c) => s + c[7], 0);
+    if (first === null) first = n;
+    if (n >= DATA.explorer.minimum) { used = level; cells = subset; break; }
+  }
+  const w = cells.reduce((s, c) => s + c[8], 0), byUrban = [0, 0, 0, 0];
+  cells.forEach(c => { byUrban[c[6]] += c[8] / w; });
+  return {used, first, n: cells.reduce((s, c) => s + c[7], 0), byUrban, same: byUrban[P.urban],
+          home: cells.reduce((s, c) => s + c[9], 0) / w, trips: cells.reduce((s, c) => s + c[10], 0) / w};
+}
+function renderExplorer() {
+  const P = STATE.profile, ctl = document.getElementById('explorer-controls');
+  if (!ctl.children.length) {
+    const add = (label, key, options) => {
+      const wrap = h('label', {class: 'ctl'}, label + ' '), sel = h('select');
+      options.forEach(([v, text]) => { const o = h('option', {value: v}, text); if (+v === P[key]) o.selected = true; sel.appendChild(o); });
+      sel.addEventListener('change', () => { P[key] = +sel.value; renderExplorer(); });
+      wrap.appendChild(sel); ctl.appendChild(wrap);
+    };
+    add('Home', 'urban', T.map((t, i) => [i, t]));
+    add('Sex', 'sex', [[0, 'Woman'], [1, 'Man']]);
+    add('Age', 'age', AGES.map((a, i) => [i, a]));
+    add('Occupation', 'occ', Object.entries(OCCS));
+    add('Household car', 'car', [[1, 'Yes'], [0, 'No']]);
+  }
+  const box = document.getElementById('explorer-cards'); box.replaceChildren();
+  const rows = [];
+  DESIGNS.forEach(d => {
+    const r = donorPool(d, P), card = h('div', {class: 'xcard'});
+    card.appendChild(h('div', {class: 'head'}, SERIES[d.key].name));
+    card.appendChild(h('div', {class: 'big'}, pct(r.same)));
+    card.appendChild(h('div', {class: 'cap'}, 'of the pool lives in a ' + T[P.urban].toLowerCase() + ' commune'));
+    card.appendChild(h('div', {class: 'lbl'}, 'Matched on'));
+    const chips = h('div', {class: 'chips'});
+    d.cols.forEach((a, i) => chips.appendChild(h('span', {class: 'chip' + (i < r.used ? '' : ' off')}, ATTR[a])));
+    card.appendChild(chips);
+    card.appendChild(h('div', {class: 'lbl'}, 'Where the pool lives'));
+    const stack = h('div', {class: 'stack', role: 'img', 'aria-label': T.map((t, i) => t + ' ' + pct(r.byUrban[i])).join(', ')});
+    r.byUrban.forEach((v, i) => {
+      if (v <= 0) return;
+      const seg = h('i', {style: 'flex:' + v.toFixed(4) + ' 1 0;background:' + ord(i)});
+      hover(seg, SERIES[d.key].name, T.map((t, k) => ({name: t, value: pct(r.byUrban[k], 1), color: ord(k)})));
+      stack.appendChild(seg);
+    });
+    card.appendChild(stack);
+    const kv = (k, v) => { const e = h('div', {class: 'kv'}, k); e.appendChild(h('b', {}, v)); card.appendChild(e); };
+    kv('Respondents in the pool', r.n.toLocaleString('en'));
+    kv('With every attribute', r.first.toLocaleString('en') + (r.first < DATA.explorer.minimum ? ' (too few)' : ''));
+    kv('Pool stays home', pct(r.home, 1));
+    kv('Pool trips per day', r.trips.toFixed(2));
+    box.appendChild(card);
+    rows.push([SERIES[d.key].name, d.cols.slice(0, r.used).map(a => ATTR[a]).join(', ') || 'nothing', r.first, r.n, ...r.byUrban.map(v => pct(v, 1)), pct(r.home, 1), r.trips.toFixed(2)]);
+  });
+  const lg = document.getElementById('explorer-legend'); lg.replaceChildren();
+  T.forEach((t, i) => { const sp = h('span'); sp.appendChild(h('i', {class: 'box', style: 'background:' + ord(i)})); sp.appendChild(document.createTextNode('Pool lives in: ' + t.toLowerCase())); lg.appendChild(sp); });
+  table('explorer-table', ['Design', 'Matched on', 'With every attribute', 'Pool', ...T, 'Stays home', 'Trips per day'], rows);
+}
+
+/* ---------- map ---------- */
+const MEASURES = {
+  immobile: {label: 'Staying home', title: 'Share of residents who stay home on a weekday', fmt: v => pct(v, 1), tick: v => pct(v), delta: v => (100 * v).toFixed(1) + ' pt'},
+  donor: {label: 'Donor from own territory', title: 'Share of residents whose donor lives in the same kind of place', fmt: v => pct(v), tick: v => pct(v), delta: v => (100 * v).toFixed(0) + ' pt'},
+  trips: {label: 'Trips (simulated)', title: 'Simulated trips per resident', fmt: v => v.toFixed(2), tick: v => v.toFixed(1), delta: v => v.toFixed(2)},
+  carkm: {label: 'Car km (simulated)', title: 'Simulated car kilometres per resident', fmt: v => v.toFixed(1) + ' km', tick: v => v.toFixed(0) + ' km', delta: v => v.toFixed(1) + ' km'}};
+const signed = (v, f) => (v > 0 ? '+' : v < 0 ? '−' : '') + f(Math.abs(v));
+function mapHighlight(id, on) {
+  document.querySelectorAll('#map [data-unit="' + id + '"], #map [data-epci="' + id + '"]').forEach(e => e.classList.toggle('on', on));
+}
+function drawMap(parent, {title, sub, level, fill, tipRows, faint}) {
+  const M = DATA.map, box = h('div');
+  const p = h('div', {class: 'paneltitle'}, title + ' '); if (sub) p.appendChild(h('span', {}, sub)); box.appendChild(p);
+  const s = svg('svg', {viewBox: `0 0 ${M.w} ${M.h}`, role: 'img', 'aria-label': title});
+  (level === 'epci' ? M.epci : M.communes).forEach(u => {
+    const node = svg('path', {d: u.d, class: 'unit' + (faint && faint(u.id) ? ' faint' : ''), fill: fill(u.id), 'data-unit': u.id});
+    const info = M.units[level][u.id], group = level === 'epci' ? u.id : u.epci;
+    hover(node, level === 'epci' ? info.name : info.name + ' · ' + M.units.epci[u.epci].name, tipRows(u.id), level === 'epci');
+    node.addEventListener('pointerenter', () => { mapHighlight(u.id, true); if (group !== u.id) mapHighlight(group, true); });
+    node.addEventListener('pointerleave', () => { mapHighlight(u.id, false); if (group !== u.id) mapHighlight(group, false); });
+    s.appendChild(node);
+  });
+  if (level === 'commune') M.epci.forEach(g => s.appendChild(svg('path', {d: g.d, class: 'outline'})));
+  M.towns.forEach(t => {
+    s.appendChild(svg('circle', {cx: t.x, cy: t.y, r: 2.2, fill: 'var(--ink)', stroke: 'var(--surface)', 'stroke-width': 1, 'pointer-events': 'none'}));
+    s.appendChild(svg('text', {x: t.x + 5, y: t.y - 4, class: 'town'}, t.name));
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+function dumbbell(parent, {title, rows, tick, lo, hi}) {
+  const box = h('div'); box.appendChild(h('div', {class: 'paneltitle'}, title));
+  const labelW = 176, rowH = 21, W = 480, top = 4, right = 16, H = top + rows.length * rowH + 24;
+  // round axis: the smallest "nice" step that needs at most five intervals
+  const step = [0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10].find(st => (Math.ceil(hi / st) - Math.floor(lo / st)) <= 5);
+  lo = Math.floor(lo / step + 1e-9) * step; hi = Math.ceil(hi / step - 1e-9) * step;
+  const x = v => labelW + (W - labelW - right) * (v - lo) / (hi - lo);
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': title});
+  for (let v = lo; v <= hi + 1e-9; v += step) {
+    s.appendChild(svg('line', {x1: x(v), x2: x(v), y1: top, y2: H - 22, class: 'gridline'}));
+    s.appendChild(svg('text', {x: x(v), y: H - 6, 'text-anchor': 'middle', class: 'tick'}, tick(v)));
+  }
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + rowH / 2, g = svg('g', {class: 'rowhit', 'data-epci': r.id});
+    g.appendChild(svg('rect', {x: 0, y: y - rowH / 2, width: W, height: rowH, fill: 'transparent'}));
+    g.appendChild(svg('text', {x: 0, y: y + 4}, r.name.length > 27 ? r.name.slice(0, 26) + '…' : r.name));
+    g.appendChild(svg('line', {x1: x(r.a), x2: x(r.c), y1: y, y2: y, stroke: 'var(--axis)', 'stroke-width': 2, 'stroke-linecap': 'round'}));
+    g.appendChild(svg('circle', {cx: x(r.a), cy: y, r: 4.5, fill: SERIES.A.color, stroke: 'var(--surface)', 'stroke-width': 2}));
+    g.appendChild(svg('circle', {cx: x(r.c), cy: y, r: 4.5, fill: SERIES.C.color, stroke: 'var(--surface)', 'stroke-width': 2}));
+    hover(g, r.name, r.tip);
+    g.addEventListener('pointerenter', () => mapHighlight(r.id, true));
+    g.addEventListener('pointerleave', () => mapHighlight(r.id, false));
+    s.appendChild(g);
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+function renderMap() {
+  const M = DATA.map, key = STATE.metric, level = STATE.level, me = MEASURES[key], U = M.units[level];
+  const [lo, hi] = M.domains[key];
+  segmented('mapmetric', Object.entries(MEASURES).map(([k, m]) => [k, m.label]), key, k => { STATE.metric = k; renderMap(); });
+  segmented('maplevel', [['epci', 'Intercommunalité'], ['commune', 'Commune']], level, k => { STATE.level = k; renderMap(); });
+  document.getElementById('maptitle').textContent = me.title + ', by ' + (level === 'epci' ? 'intercommunalité' : 'commune');
+  document.getElementById('mapsub').textContent = (key === 'trips' || key === 'carkm')
+    ? 'MATSim runs of the two populations. Residents are counted at their home, travelling or not.'
+    : 'Matched residents of the two populations, counted at their home.';
+  const tipRows = id => { const u = U[id], [a, c] = u.v[key]; return [
+    {name: SERIES.A.name, value: me.fmt(a), color: SERIES.A.color}, {name: SERIES.C.name, value: me.fmt(c), color: SERIES.C.color},
+    {name: 'Change, A to C', value: signed(c - a, me.delta)}, {name: 'Sampled residents', value: u.n[0].toLocaleString('en')},
+    ...(level === 'commune' ? [{name: 'INSEE urban type', value: T[u.u]}] : [])]; };
+  const faint = level === 'commune' ? id => U[id].n[0] < M.small : null;
+  const maps = document.getElementById('maps'); maps.replaceChildren();
+  ['A', 'C'].forEach((k, i) => drawMap(maps, {title: SERIES[k].name, level, faint, tipRows,
+    fill: id => ramp((U[id].v[key][i] - lo) / (hi - lo)).fill}));
+
+  const sc = document.getElementById('mapscale'); sc.replaceChildren();
+  const stops = Array.from({length: 9}, (_, k) => ramp(k / 8).fill).join(',');
+  sc.appendChild(h('span', {}, (key === 'donor' ? '' : '≤ ') + me.fmt(lo)));
+  sc.appendChild(h('span', {class: 'bar', style: 'background:linear-gradient(90deg,' + stops + ')'}));
+  sc.appendChild(h('span', {}, (key === 'donor' ? '' : '≥ ') + me.fmt(hi)));
+  if (level === 'commune') { sc.appendChild(h('span', {class: 'gap'})); sc.appendChild(h('span', {}, 'Faded: fewer than ' + M.small + ' sampled residents. Lines: intercommunalités.')); }
+
+  const below = document.getElementById('mapbelow'); below.replaceChildren();
+  drawMap(below, {title: 'For orientation', sub: '· INSEE urban type of each commune', level: 'commune',
+    fill: id => ord(M.units.commune[id].u), tipRows: id => [{name: 'INSEE urban type', value: T[M.units.commune[id].u]},
+      {name: 'Sampled residents', value: M.units.commune[id].n[0].toLocaleString('en')}]});
+  const G = M.units.epci, order = Object.keys(G).sort((p, q) => G[q].v[key][1] - G[p].v[key][1]);
+  const all = order.flatMap(id => G[id].v[key]);
+  dumbbell(below, {title: 'The ' + order.length + ' intercommunalités, ordered by C', tick: me.tick, lo: Math.min(...all), hi: Math.max(...all),
+    rows: order.map(id => ({id, name: G[id].name, a: G[id].v[key][0], c: G[id].v[key][1], tip: [
+      {name: SERIES.A.name, value: me.fmt(G[id].v[key][0]), color: SERIES.A.color}, {name: SERIES.C.name, value: me.fmt(G[id].v[key][1]), color: SERIES.C.color},
+      {name: 'Change, A to C', value: signed(G[id].v[key][1] - G[id].v[key][0], me.delta)}]}))});
+  const lg = document.getElementById('mapbelow-legend'); lg.replaceChildren();
+  T.forEach((t, i) => { const sp = h('span'); sp.appendChild(h('i', {class: 'box', style: 'background:' + ord(i)})); sp.appendChild(document.createTextNode(t)); lg.appendChild(sp); });
+  ['A', 'C'].forEach(k => { const sp = h('span'); sp.appendChild(h('i', {class: 'box', style: 'border-radius:50%;background:' + SERIES[k].color})); sp.appendChild(document.createTextNode(SERIES[k].name)); lg.appendChild(sp); });
+  table('map-table', ['Intercommunalité', 'A', 'C', 'Change', 'Sampled residents'],
+    order.map(id => [G[id].name, me.fmt(G[id].v[key][0]), me.fmt(G[id].v[key][1]), signed(G[id].v[key][1] - G[id].v[key][0], me.delta), G[id].n[0].toLocaleString('en')]));
+}
+
+/* ---------- mean and range over seeds, A and C paired by territory ---------- */
+function seedRanges(parent, {title, stats, fmt, lo, hi, step}) {
+  const box = h('div'); box.appendChild(h('div', {class: 'paneltitle'}, title));
+  const labelW = 96, rowH = 19, groupGap = 10, top = 4, W = 460, right = 52;
+  const H = top + T.length * (2 * rowH + groupGap) + 22;
+  const x = v => labelW + (W - labelW - right) * (v - lo) / (hi - lo);
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': title});
+  for (let v = lo; v <= hi + 1e-9; v += step) {
+    s.appendChild(svg('line', {x1: x(v), x2: x(v), y1: top, y2: H - 22, class: v === 0 ? 'axisline' : 'gridline'}));
+    s.appendChild(svg('text', {x: x(v), y: H - 6, 'text-anchor': 'middle', class: 'tick'}, fmt(v, 0)));
+  }
+  T.forEach((t, i) => {
+    const y0 = top + i * (2 * rowH + groupGap);
+    s.appendChild(svg('text', {x: 0, y: y0 + rowH + 4}, t));
+    ['A', 'C'].forEach((k, j) => {
+      const [mean, low, high] = stats[k][i], y = y0 + j * rowH + rowH / 2, g = svg('g');
+      g.appendChild(svg('line', {x1: x(low), x2: x(high), y1: y, y2: y, stroke: SERIES[k].color, 'stroke-width': 2, 'stroke-linecap': 'round'}));
+      [low, high].forEach(v => g.appendChild(svg('line', {x1: x(v), x2: x(v), y1: y - 4, y2: y + 4, stroke: SERIES[k].color, 'stroke-width': 2})));
+      g.appendChild(svg('circle', {cx: x(mean), cy: y, r: 4.5, fill: SERIES[k].color, stroke: 'var(--surface)', 'stroke-width': 2}));
+      g.appendChild(svg('text', {x: x(high) + 9, y: y + 4, class: 'val'}, k + ' ' + fmt(mean, 1)));
+      g.appendChild(svg('rect', {x: labelW - 6, y: y - rowH / 2, width: W - labelW + 6, height: rowH, class: 'hit'}));
+      hover(g, t, [{name: SERIES[k].name, value: fmt(mean, 1), color: SERIES[k].color}, {name: 'Lowest seed', value: fmt(low, 1)}, {name: 'Highest seed', value: fmt(high, 1)}]);
+      s.appendChild(g);
+    });
+  });
+  box.appendChild(s); parent.appendChild(box);
+}
+
+/* ---------- estimates with intervals for several samples, grouped by territory ---------- */
+function mark(shape, cx, cy) {
+  if (shape === 'diamond') return svg('rect', {x: cx - 4, y: cy - 4, width: 8, height: 8, transform: `rotate(45 ${cx} ${cy})`, fill: 'var(--ref)', stroke: 'var(--surface)', 'stroke-width': 1.5});
+  if (shape === 'ring') return svg('circle', {cx, cy, r: 4, fill: 'var(--surface)', stroke: 'var(--ref)', 'stroke-width': 2});
+  return svg('circle', {cx, cy, r: 4.5, fill: 'var(--ref)', stroke: 'var(--surface)', 'stroke-width': 1.5});
+}
+function sampleCI(parent, {samples, data}) {
+  const labelW = 96, rowH = 20, gap = 12, top = 4, W = 600, right = 150, hi = 0.2, step = 0.05;
+  const H = top + T.length * (samples.length * rowH + gap) + 22;
+  const x = v => labelW + (W - labelW - right) * Math.min(v, hi) / hi;
+  const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Share staying home by sample and home territory'});
+  for (let v = 0; v <= hi + 1e-9; v += step) {
+    s.appendChild(svg('line', {x1: x(v), x2: x(v), y1: top, y2: H - 22, class: v === 0 ? 'axisline' : 'gridline'}));
+    s.appendChild(svg('text', {x: x(v), y: H - 6, 'text-anchor': 'middle', class: 'tick'}, pct(v)));
+  }
+  T.forEach((t, i) => {
+    const y0 = top + i * (samples.length * rowH + gap);
+    s.appendChild(svg('text', {x: 0, y: y0 + samples.length * rowH / 2 + 4}, t));
+    samples.forEach(([key, name, shape], j) => {
+      const [est, low, high, n] = data[key][i], y = y0 + j * rowH + rowH / 2, g = svg('g');
+      g.appendChild(svg('line', {x1: x(low), x2: x(high), y1: y, y2: y, stroke: 'var(--ref)', 'stroke-width': 2, 'stroke-linecap': 'round'}));
+      g.appendChild(mark(shape, x(est), y));
+      g.appendChild(svg('text', {x: x(high) + 10, y: y + 4, class: 'val'}, pct(est, 1)));
+      g.appendChild(svg('text', {x: W, y: y + 4, 'text-anchor': 'end', class: 'tick'}, 'n = ' + n.toLocaleString('en')));
+      g.appendChild(svg('rect', {x: labelW - 6, y: y - rowH / 2, width: W - labelW + 6, height: rowH, class: 'hit'}));
+      hover(g, t, [{name, value: pct(est, 1)}, {name: '95% interval', value: pct(low, 1) + ' to ' + pct(high, 1)}, {name: 'Respondents', value: n.toLocaleString('en')}]);
+      s.appendChild(g);
+    });
+  });
+  parent.appendChild(s);
+}
+
+function meters(id, rows) {
+  const el = document.getElementById(id); el.replaceChildren();
+  rows.forEach(r => {
+    const m = h('div', {class: 'meter'}), n = h('div', {class: 'name'});
+    n.appendChild(h('b', {}, r.name)); if (r.note) n.appendChild(h('span', {}, ' ' + r.note));
+    const tr = h('div', {class: 'track'}); tr.appendChild(h('div', {class: 'fill', style: 'width:' + (100 * r.value).toFixed(1) + '%'}));
+    m.appendChild(n); m.appendChild(tr); m.appendChild(h('div', {class: 'pct'}, pct(r.value, r.value < 0.1 ? 1 : 0)));
+    el.appendChild(m);
+  });
+}
+
+/* ---------- render ---------- */
+function render() {
+  const V = Object.fromEntries(DATA.variants.map(v => [v.id, v]));
+  if (DATA.explorer) renderExplorer();
+  if (DATA.map) renderMap();
+  const short = T.map(t => t.replace(' city', ''));
+
+  // donors
+  const dg = document.getElementById('donorgrid'); dg.replaceChildren();
+  const DONOR_SETS = {entd: [['A', 'eqasim default'], ['B', 'national donors'], ['C', 'urban type added']],
+                      emp: [['D', 'national donors'], ['E', 'urban type added']]};
+  segmented('donorsurvey', [['entd', 'ENTD 2008'], ['emp', 'EMP 2019']], STATE.donorSurvey, k => { STATE.donorSurvey = k; render(); });
+  const dset = DONOR_SETS[STATE.donorSurvey].filter(([k]) => DATA.donors[k]);
+  dg.className = 'chart panels ' + (dset.length === 3 ? 'c3' : 'c2');
+  dset.forEach(([k, sub]) =>
+    heatGrid(dg, {title: 'Variant ' + k, sub: '· ' + sub, rows: short, cols: short, values: DATA.donors[k].matrix, max: 1, fmt: v => pct(v), rowHead: 'Residents: '}));
+  const drows = [];
+  DATA.variants.forEach(v => DATA.donors[v.id].matrix.forEach((r, i) => drows.push([v.id, T[i], ...r.map(x => pct(x, 1))])));
+  table('donorgrid-table', ['Variant', 'Home territory', ...T.map(t => 'Donor: ' + t)], drows);
+  meters('localmeters', DATA.variants.map(v => ({name: v.id, note: v.survey + ' · ' + v.label.toLowerCase(), value: DATA.donors[v.id].local})));
+
+  const L = DATA.local;
+  // regional survey as a second reference
+  if (L) {
+    const lh = document.getElementById('localhome'); lh.replaceChildren();
+    const wrap = h('div', {style: 'max-width:640px'});
+    sampleCI(wrap, {samples: [['entd', 'National survey (ENTD 2008)', 'dot'], ['entd_44', 'National survey, respondents living in Loire-Atlantique', 'ring'], ['edgt', 'Regional survey (EDGT 2015)', 'diamond']], data: L.home});
+    lh.appendChild(wrap);
+    const lg = document.getElementById('localhome-legend'); lg.replaceChildren();
+    [['dot', 'National survey (ENTD 2008)'], ['ring', 'National survey, respondents living in Loire-Atlantique'], ['diamond', 'Regional survey (EDGT 2015)']].forEach(([shape, name]) => {
+      const sp = h('span'), ic = svg('svg', {viewBox: '0 0 14 14', style: 'display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:6px'});
+      ic.appendChild(mark(shape, 7, 7)); sp.appendChild(ic); sp.appendChild(document.createTextNode(name)); lg.appendChild(sp); });
+    table('localhome-table', ['Sample', ...T, 'All'], [['National survey (ENTD 2008)', 'entd'], ['National survey, respondents living in Loire-Atlantique', 'entd_44'], ['Regional survey (EDGT 2015)', 'edgt']].flatMap(([name, k]) => [
+      [name, ...L.home[k].map(v => pct(v[0], 1) + ' (' + pct(v[1], 1) + ' to ' + pct(v[2], 1) + ')')],
+      ['respondents', ...L.home[k].map(v => v[3].toLocaleString('en'))]]));
+    const lf = document.getElementById('localfid'); lf.replaceChildren();
+    const ks = ['A', 'B', 'C'].filter(k => L.fidelity[k]), names = ks.map(k => k + ' · ' + (k === 'A' ? 'default, local' : k === 'B' ? 'default, national' : 'urban type'));
+    heatGrid(lf, {title: 'Against the national survey', sub: '· ENTD 2008', rows: names, cols: short, values: ks.map(k => DATA.fidelity[k]), max: 0.2, fmt: v => v.toFixed(3), labelW: 150, cellH: 34});
+    heatGrid(lf, {title: 'Against the regional survey', sub: '· EDGT 2015', rows: names, cols: short, values: ks.map(k => L.fidelity[k]), max: 0.2, fmt: v => v.toFixed(3), labelW: 150, cellH: 34});
+    table('localfid-table', ['Variant', 'Reference', ...T], ks.flatMap((k, i) => [[names[i], 'National survey', ...DATA.fidelity[k].map(v => v.toFixed(3))], [names[i], 'Regional survey', ...L.fidelity[k].map(v => v.toFixed(3))]]));
+  }
+
+  // staying home
+  const hl = document.getElementById('homelines'); hl.replaceChildren();
+  const imm = k => DATA.indicators[k].immobile_share;
+  lineChart(hl, {title: 'From ENTD 2008', sub: '', ymax: 0.2, yfmt: (v, d = 0) => pct(v, d),
+    series: [{key: 'obs', values: DATA.observed.entd.immobile_share}, ...(L ? [{key: 'loc', values: L.indicators.immobile_share}] : []), {key: 'A', values: imm('A')}, {key: 'B', values: imm('B')}, {key: 'C', values: imm('C')}]});
+  lineChart(hl, {title: 'From EMP 2019', sub: '· survey read with day weights', ymax: 0.2, yfmt: (v, d = 0) => pct(v, d),
+    series: [{key: 'obs', values: DATA.observed.emp.immobile_share}, {key: 'D', values: imm('D')}, {key: 'E', values: imm('E')}]});
+  legend('homelines-legend', ['obs', ...(L ? ['loc'] : []), 'A', 'B', 'C', 'D', 'E']);
+  table('homelines-table', ['Series', ...T], [
+    ['National survey, ENTD', ...DATA.observed.entd.immobile_share.map(x => pct(x, 1))],
+    ...(L ? [['Regional survey, EDGT', ...L.indicators.immobile_share.map(x => pct(x, 1))]] : []),
+    ...['A', 'B', 'C'].map(k => [SERIES[k].name, ...imm(k).map(x => pct(x, 1))]),
+    ['Survey, EMP (day weights)', ...DATA.observed.emp.immobile_share.map(x => pct(x, 1))],
+    ...['D', 'E'].map(k => [SERIES[k].name, ...imm(k).map(x => pct(x, 1))])]);
+
+  // distances
+  const dl = document.getElementById('distlines'); dl.replaceChildren();
+  const km = k => DATA.indicators[k].euclidean_km_per_mobile, kmf = (v, d = 0) => v.toFixed(d) + ' km';
+  lineChart(dl, {title: 'From ENTD 2008', sub: '', ymax: 48, yfmt: kmf,
+    series: [{key: 'obs', values: DATA.observed.entd.euclidean_km_per_mobile}, ...(L ? [{key: 'loc', values: L.indicators.euclidean_km_per_mobile}] : []), {key: 'A', values: km('A')}, {key: 'B', values: km('B')}, {key: 'C', values: km('C')}]});
+  lineChart(dl, {title: 'From EMP 2019', sub: '', ymax: 48, yfmt: kmf,
+    series: [{key: 'obs', values: DATA.observed.emp.euclidean_km_per_mobile}, {key: 'D', values: km('D')}, {key: 'E', values: km('E')}]});
+  legend('distlines-legend', ['obs', ...(L ? ['loc'] : []), 'A', 'B', 'C', 'D', 'E']);
+  table('distlines-table', ['Series', ...T, 'Rural minus central'], [
+    ...(L ? [['Regional survey, EDGT', ...L.indicators.euclidean_km_per_mobile.map(x => x.toFixed(1)), (L.indicators.euclidean_km_per_mobile[3] - L.indicators.euclidean_km_per_mobile[0]).toFixed(1)]] : []),
+    ['Survey, ENTD', ...DATA.observed.entd.euclidean_km_per_mobile.map(x => x.toFixed(1)), (DATA.observed.entd.euclidean_km_per_mobile[3] - DATA.observed.entd.euclidean_km_per_mobile[0]).toFixed(1)],
+    ...['A', 'B', 'C'].map(k => [SERIES[k].name, ...km(k).map(x => x.toFixed(1)), (km(k)[3] - km(k)[0]).toFixed(1)]),
+    ['Survey, EMP', ...DATA.observed.emp.euclidean_km_per_mobile.map(x => x.toFixed(1)), (DATA.observed.emp.euclidean_km_per_mobile[3] - DATA.observed.emp.euclidean_km_per_mobile[0]).toFixed(1)],
+    ...['D', 'E'].map(k => [SERIES[k].name, ...km(k).map(x => x.toFixed(1)), (km(k)[3] - km(k)[0]).toFixed(1)])]);
+
+  // simulation
+  if (DATA.simulation) {
+    const S = DATA.simulation, tv = (k, c) => S[k].travel[c].slice(0, 4);
+    const sl = document.getElementById('simlines'); sl.replaceChildren();
+    lineChart(sl, {title: 'Trips per resident', sub: '', ymax: 4, yfmt: (v, d = 0) => v.toFixed(d ? 2 : 0),
+      series: [{key: 'A', values: tv('A', 'trips_per_resident')}, {key: 'C', values: tv('C', 'trips_per_resident')}]});
+    lineChart(sl, {title: 'Car kilometres per resident', sub: '', ymax: 32, yfmt: (v, d = 0) => v.toFixed(d) + ' km',
+      series: [{key: 'A', values: tv('A', 'car_km_per_resident')}, {key: 'C', values: tv('C', 'car_km_per_resident')}]});
+    legend('simlines-legend', ['A', 'C']);
+    const cols = [...T, 'All'];
+    const rowsOf = (label, c, f) => ['A', 'C'].map(k => [label + ', ' + k, ...S[k].travel[c].map(f)]);
+    table('simlines-table', ['Per resident', ...cols], [
+      ...rowsOf('Share travelling', 'travelling_share', x => pct(x, 1)),
+      ...rowsOf('Trips', 'trips_per_resident', x => x.toFixed(2)),
+      ...rowsOf('Kilometres', 'km_per_resident', x => x.toFixed(1)),
+      ...rowsOf('Car kilometres', 'car_km_per_resident', x => x.toFixed(1)),
+      ...rowsOf('Minutes travelling', 'minutes_per_resident', x => x.toFixed(0)),
+      ...rowsOf('Kilometres per trip', 'km_per_trip', x => x.toFixed(1))]);
+    const rel = c => S.C.travel[c].map((v, i) => { const x = 100 * (v / S.A.travel[c][i] - 1); return (x >= 0 ? '+' : '\u2212') + Math.abs(x).toFixed(1) + '%'; });
+    const pts = m => S.C.modes[m].map((v, i) => { const x = 100 * (v - S.A.modes[m][i]); return (x >= 0 ? '+' : '\u2212') + Math.abs(x).toFixed(1) + ' pt'; });
+    table('simchange', ['', ...cols], [
+      ['Residents travelling', ...rel('travelling_share')],
+      ['Trips per resident', ...rel('trips_per_resident')],
+      ['Kilometres per resident', ...rel('km_per_resident')],
+      ['Car kilometres per resident', ...rel('car_km_per_resident')],
+      ['Minutes travelling per resident', ...rel('minutes_per_resident')],
+      ['Kilometres per trip', ...rel('km_per_trip')],
+      ['Car, share of trips', ...pts('car')],
+      ['Public transport, share of trips', ...pts('pt')],
+      ['Walking, share of trips', ...pts('walk')]]);
+  }
+
+  // repeats over seeds
+  if (DATA.seeds) {
+    const S = DATA.seeds, f3 = (v, d) => v.toFixed(d ? 3 : 2), pc = (v, d = 0) => pct(v, d);
+    const sp = document.getElementById('seedpop'); sp.replaceChildren();
+    seedRanges(sp, {title: 'Staying home', stats: S.stats.immobile_share, fmt: pc, lo: 0, hi: 0.2, step: 0.05});
+    seedRanges(sp, {title: 'Distance to the national survey', stats: S.stats.hellinger, fmt: f3, lo: 0, hi: 0.15, step: 0.05});
+    const ss = document.getElementById('seedsim'); ss.replaceChildren();
+    seedRanges(ss, {title: 'Trips per resident', stats: S.stats.trips_per_resident, fmt: (v, d) => v.toFixed(d ? 2 : 0), lo: 0, hi: 4, step: 1});
+    seedRanges(ss, {title: 'Car kilometres per resident', stats: S.stats.car_km_per_resident, fmt: (v, d) => v.toFixed(d ? 1 : 0) + ' km', lo: 0, hi: 30, step: 10});
+    legend('seedpop-legend', ['A', 'C'], true); legend('seedsim-legend', ['A', 'C'], true);
+    const trio = (v, f) => f(v[0]) + ' (' + f(v[1]) + ' to ' + f(v[2]) + ')';
+    table('seedpop-table', ['Mean (lowest to highest seed)', ...T],
+      [['Staying home', 'immobile_share', v => pct(v, 1)], ['Distance to the national survey', 'hellinger', v => v.toFixed(3)], ...(S.stats.hellinger_edgt ? [['Distance to the regional survey', 'hellinger_edgt', v => v.toFixed(3)]] : [])].flatMap(([label, q, f]) =>
+        ['A', 'C'].map(k => [label + ', ' + k, ...S.stats[q][k].map(v => trio(v, f))])));
+    const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(100 * v).toFixed(1);
+    const relrow = (label, q, points) => [label, ...S.diff[q].map(r => points
+      ? sgn(r[0]) + ' pt (' + sgn(r[1]) + ' to ' + sgn(r[2]) + ')' + (r[6] ? '' : ' *')
+      : sgn(r[3]) + '% (' + sgn(r[4]) + ' to ' + sgn(r[5]) + ')' + (r[6] ? '' : ' *'))];
+    table('seeddiff-table', ['Mean change (range over seeds)', ...T, 'All'], [
+      relrow('Residents travelling', 'travelling_share', true), relrow('Trips per resident', 'trips_per_resident'),
+      relrow('Car kilometres per resident', 'car_km_per_resident'), relrow('Minutes travelling per resident', 'minutes_per_resident'),
+      relrow('Kilometres per trip', 'km_per_trip'), relrow('Public transport, share of trips', 'trip_share_pt', true),
+      ['* the sign is not the same in every seed', '', '', '', '', '']]);
+  }
+
+  // generators
+  if (DATA.generators) {
+    const G = DATA.generators, p1 = (v, d = 0) => pct(v, d), f3 = v => v.toFixed(3);
+    const gh = document.getElementById('genhome'); gh.replaceChildren();
+    const wrap = h('div', {style: 'max-width:620px'});
+    forest(wrap, {rows: G.methods.map(m => ({name: m.name, v: m.rural_home, aware: m.aware})), ref: G.observed_rural_home, refLabel: 'Observed', fmt: p1, xmin: 0.08, xmax: 0.20});
+    gh.appendChild(wrap);
+    const lg = document.getElementById('gen-legend'); lg.replaceChildren();
+    [['var(--s1)', 'Sees the home territory'], ['var(--s2)', 'Does not']].forEach(([c, n]) => { const sp = h('span'); sp.appendChild(h('i', {class: 'box', style: 'background:' + c})); sp.appendChild(document.createTextNode(n)); lg.appendChild(sp); });
+    table('genhome-table', ['Generator', 'Sees territory', 'Rural stay-home, mean', 'Range over splits'],
+      G.methods.map(m => [m.name, m.aware ? 'yes' : 'no', pct(m.rural_home[0], 1), pct(m.rural_home[1], 1) + ' to ' + pct(m.rural_home[2], 1)]).concat([['Observed (held-out respondents)', '', pct(G.observed_rural_home, 1), '']]));
+    const ge = document.getElementById('generror'); ge.replaceChildren();
+    forest(ge, {title: 'Rural residents', rows: G.methods.map(m => ({name: m.name, v: m.rural_error, aware: m.aware})), ref: G.floor_rural, refLabel: 'Floor', fmt: (v, d) => v.toFixed(d ? 3 : 2), xmin: 0.04, xmax: 0.16});
+    forest(ge, {title: 'All residents', rows: G.methods.map(m => ({name: m.name, v: m.all_error, aware: m.aware})), ref: G.floor_all, refLabel: 'Floor', fmt: (v, d) => v.toFixed(d ? 3 : 2), xmin: 0.04, xmax: 0.16});
+    table('generror-table', ['Generator', 'Rural: mean', 'Rural: range', 'All: mean', 'All: range', 'Unreported chains'],
+      G.methods.map(m => [m.name, f3(m.rural_error[0]), f3(m.rural_error[1]) + ' to ' + f3(m.rural_error[2]), f3(m.all_error[0]), f3(m.all_error[1]) + ' to ' + f3(m.all_error[2]), pct(m.novel, 1)])
+        .concat([['Floor (survey against itself)', f3(G.floor_rural), '', f3(G.floor_all), '', '']]));
+  }
+
+  // gap between rural and central-city residents
+  const gc = document.getElementById('gapcard');
+  if (DATA.gaps && DATA.gaps.observed.entd) {
+    const G = DATA.gaps, gp = document.getElementById('gaps'); gp.replaceChildren();
+    const sg = (v, t) => (v > 1e-12 ? '+' : v < -1e-12 ? '−' : '') + t(Math.abs(v));
+    const kinds = {
+      immobile_share: ['Staying home, percentage points', v => sg(v, a => (100 * a).toFixed(1)) + ' pt', 0.02, v => sg(v, a => (100 * a).toFixed(0))],
+      tours_per_mobile: ['Home-based tours per mobile person', v => sg(v, a => a.toFixed(2)), 0.05, v => sg(v, a => a.toFixed(2))],
+      euclidean_km_per_mobile: ['Distance per mobile person, km', v => sg(v, a => a.toFixed(1)) + ' km', 5, v => sg(v, a => a.toFixed(0))],
+    };
+    const flat = v => [v, v, v];
+    G.indicators.forEach(name => {
+      const [title, fmt, step, tick] = kinds[name], rows = [{name: 'National survey', full: 'National survey (ENTD 2008)', v: flat(G.observed.entd[name]), shape: 'dot', color: 'var(--ref)'}];
+      if (G.regional[name] !== undefined) rows.push({name: 'Regional survey', full: SERIES.loc.name, v: flat(G.regional[name]), shape: 'diamond', color: 'var(--ref)'});
+      ['A', 'B', 'C'].filter(k => G.generated[k]).forEach(k => rows.push({name: k, full: SERIES[k].name, v: G.generated[k][name].slice(0, 3), color: SERIES[k].color}));
+      gapPanel(gp, {title, rows, fmt, tick, step});
+    });
+    const cell = (name, v) => v === undefined ? '' : kinds[name][1](v);
+    const withRange = (name, g) => g ? cell(name, g[name][0]) + (g[name][2] > g[name][1] ? ' (' + cell(name, g[name][1]) + ' to ' + cell(name, g[name][2]) + ')' : '') : '';
+    table('gaps-table', ['Rural minus central city', 'National survey (ENTD)', 'Regional survey', 'A', 'B', 'C', 'National survey (EMP)', 'D', 'E'],
+      G.indicators.map(name => [kinds[name][0], cell(name, G.observed.entd[name]), cell(name, G.regional[name]),
+        ...['A', 'B', 'C'].map(k => withRange(name, G.generated[k])), cell(name, (G.observed.emp || {})[name]),
+        ...['D', 'E'].map(k => withRange(name, G.generated[k]))]));
+  } else if (gc) gc.hidden = true;
+
+  // top chains
+  const tc = document.getElementById('topchains'); tc.replaceChildren();
+  const trows = [];
+  [['none', 'Rural residents'], ['central_city', 'Central-city residents']].forEach(([u, title]) => {
+    const a = DATA.top_chains.A[u], c = DATA.top_chains.C[u];
+    const rows = a.map((r, i) => ({chain: r.chain, obs: r.observed, A: r.generated, C: c[i].generated}));
+    chainBars(tc, {title, rows, keys: ['obs', 'A', 'C'], xmax: 0.2});
+    rows.forEach(r => trows.push([title, chainName(r.chain), pct(r.obs, 1), pct(r.A, 1), pct(r.C, 1)]));
+  });
+  legend('topchains-legend', ['obs', 'A', 'C'], true);
+  table('topchains-table', ['Residents', 'Chain', 'Survey', 'A', 'C'], trows);
+
+  // fidelity
+  const fd = document.getElementById('fidelity'); fd.replaceChildren();
+  const fwrap = h('div', {style: 'max-width:450px'});
+  heatGrid(fwrap, {rows: DATA.variants.map(v => v.id + ' · ' + v.survey + ', ' + (v.label.startsWith('Urban') ? 'urban type' : v.id === 'A' ? 'default, local' : 'default')),
+    cols: short, values: DATA.variants.map(v => DATA.fidelity[v.id]), max: 0.2, fmt: v => v.toFixed(3), labelW: 190, cellH: 34});
+  fd.appendChild(fwrap);
+  table('fidelity-table', ['Variant', ...T], DATA.variants.map(v => [v.id + ' · ' + v.survey + ' · ' + v.label, ...DATA.fidelity[v.id].map(x => x.toFixed(3))]));
+
+  meters('matchmeters', DATA.variants.map(v => ({name: v.id, note: v.survey + ' · ' + DATA.matching[v.id].attributes + ' attributes', value: DATA.matching[v.id].all})));
+
+  // surveys
+  const sd = document.getElementById('surveydots'); sd.replaceChildren();
+  const E = DATA.survey.entd;
+  dotCI(sd, {title: 'Stayed home', values: E.immobile_share, fmt: v => pct(v, 1)});
+  dotCI(sd, {title: 'Distance per mobile person', values: E.distance_km_per_mobile, fmt: v => v.toFixed(0) + ' km'});
+  dotCI(sd, {title: 'Home-based tours per mobile person', values: E.tours_per_mobile, fmt: v => v.toFixed(2)});
+  const names = {immobile_share: ['Stayed home', v => pct(v, 1)], distance_km_per_mobile: ['Distance per mobile person (km)', v => v.toFixed(1)],
+    tours_per_mobile: ['Tours per mobile person', v => v.toFixed(2)], activities_per_mobile: ['Activities per mobile person', v => v.toFixed(2)],
+    simple_commute_share: ['Simple commute', v => pct(v, 1)], secondary_share: ['Has a secondary activity', v => pct(v, 1)]};
+  table('surveydots-table', ['Indicator (ENTD 2008)', ...T], Object.keys(names).map(k => [names[k][0], ...E[k].map(v => names[k][1](v[0]) + ' [' + names[k][1](v[1]) + ', ' + names[k][1](v[2]) + ']')]));
+
+  const pools = [...new Set(DATA.thin.map(r => r.donor_pool))];
+  const cell = (rows, s, p) => { const r = rows.find(x => x.survey === s && x.donor_pool === p); return r ? pct(r.share_in_thin_cells, 1) : ''; };
+  table('thintable', ['Donor pool', 'ENTD, all', 'ENTD, isolated city', 'EMP, all', 'EMP, isolated city'],
+    pools.map(p => [p.charAt(0).toUpperCase() + p.slice(1), cell(DATA.thin, 'entd', p), cell(DATA.thin_isolated, 'entd', p), cell(DATA.thin, 'emp', p), cell(DATA.thin_isolated, 'emp', p)]));
+
+  meters('empmeters', [
+    {name: 'Person weight', note: 'as the pipeline reads it', value: DATA.emp_weights.person},
+    {name: 'Day weight', note: 'POND_JOUR', value: DATA.emp_weights.day}]);
+
+  // variants table
+  const vt = document.getElementById('varianttable'); vt.replaceChildren();
+  const hd = h('thead'), hr = h('tr'); ['Variant', 'Survey', 'Design', 'Donor in same urban type', 'Donors from Loire-Atlantique'].forEach(x => hr.appendChild(h('th', {}, x))); hd.appendChild(hr); vt.appendChild(hd);
+  const tb = h('tbody');
+  DATA.variants.forEach(v => { const r = h('tr'); [v.id, v.survey, v.label, pct(DATA.donors[v.id].same_all), pct(DATA.donors[v.id].local)].forEach(x => r.appendChild(h('td', {}, x))); tb.appendChild(r); });
+  vt.appendChild(tb);
+}
+render();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+</script>
+</body>
+</html>

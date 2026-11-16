@@ -1,0 +1,21 @@
+survey,area,urban_type,respondents,effective_size
+entd,France,central_city,4625,1816.0
+entd,France,suburb,6782,2476.0
+entd,France,isolated_city,1297,520.0
+entd,France,none,5293,2366.0
+entd,France,all,17997,6834.0
+entd,Loire-Atlantique (44),central_city,694,347.0
+entd,Loire-Atlantique (44),suburb,664,251.0
+entd,Loire-Atlantique (44),isolated_city,186,76.0
+entd,Loire-Atlantique (44),none,254,115.0
+entd,Loire-Atlantique (44),all,1798,758.0
+emp,France,central_city,3572,2319.0
+emp,France,suburb,3857,2590.0
+emp,France,isolated_city,759,512.0
+emp,France,none,2623,1764.0
+emp,France,all,10811,7140.0
+emp,Loire-Atlantique (44),central_city,67,48.0
+emp,Loire-Atlantique (44),suburb,85,63.0
+emp,Loire-Atlantique (44),isolated_city,6,4.0
+emp,Loire-Atlantique (44),none,37,29.0
+emp,Loire-Atlantique (44),all,195,144.0

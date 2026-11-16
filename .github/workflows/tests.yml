@@ -1,0 +1,19 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest -q
+      - name: The project page rebuilds from the tracked result tables
+        run: python site/build_site.py
+      - name: The patches in eqasim_contrib still apply to eqasim-france v1.5.0
+        run: |
+          git clone --branch v1.5.0 --depth 1 https://github.com/eqasim-org/eqasim-france /tmp/eqasim-france
+          EQASIM_PATH=/tmp/eqasim-france pytest -q tests/test_eqasim_contrib.py
