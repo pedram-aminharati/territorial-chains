@@ -500,7 +500,9 @@ class GANGenerator(_TokenCoding):
     survey weights. The chain is read off as the most likely activity at each
     position, up to the first end mark.
 
-    This is the family Shone and Hillel compare with their autoencoders.
+    Added for comparison: the project description names GANs among the candidate
+    methods. The deep generative reference it cites (Shone and Hillel, 2024) uses
+    variational autoencoders, the family of ``VAEGenerator``.
     """
 
     def __init__(self, attributes=ATTRIBUTES, d_model=64, hidden=256, noise=32, max_length=16, steps=2500,

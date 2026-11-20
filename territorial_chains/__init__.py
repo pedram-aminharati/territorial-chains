@@ -4,7 +4,7 @@ from .chains import chains_from_hts, chains_from_activities, add_indicators, PUR
 from .weighted import weighted_share, weighted_mean, kish_effective_size, bootstrap_ci
 from .compare import (
     distribution, hellinger, jensen_shannon, stratified_fidelity,
-    contrast_matrix, contrast_retention,
+    contrast_matrix, contrast_retention, standardised_gap,
 )
 from .simulation import (
     read_table, attach_home, mode_shares, travel_per_resident, convergence,
@@ -17,7 +17,7 @@ __all__ = [
     "chains_from_hts", "chains_from_activities", "add_indicators", "PURPOSE_CODES",
     "weighted_share", "weighted_mean", "kish_effective_size", "bootstrap_ci",
     "distribution", "hellinger", "jensen_shannon", "stratified_fidelity",
-    "contrast_matrix", "contrast_retention",
+    "contrast_matrix", "contrast_retention", "standardised_gap",
     "read_table", "attach_home", "mode_shares", "travel_per_resident", "convergence",
     "unfinished_agents", "missing_trips",
 ]

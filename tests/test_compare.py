@@ -56,3 +56,28 @@ def test_territory_blind_generator_flattens_contrast():
 
     fidelity = stratified_fidelity(observed, blind, "chain", "territory")
     assert (fidelity["distance"] > 0.1).all()       # and it is wrong in both territories
+
+
+def test_standardised_gap_removes_what_composition_explains():
+    from territorial_chains import standardised_gap
+    # Old people stay home more, wherever they live; the rural stratum is simply older.
+    rows = []
+    for stratum, old_share in (("rural", 0.8), ("city", 0.2)):
+        for old in (True, False):
+            n = int(1000 * (old_share if old else 1 - old_share))
+            home = 0.4 if old else 0.1
+            rows += [{"stratum": stratum, "old": old, "home": i < home * n, "weight": 1.0} for i in range(n)]
+    result = standardised_gap(pd.DataFrame(rows), "home", "stratum", "rural", "city", ["old"])
+    assert result["raw"] == pytest.approx(0.18, abs=0.005)
+    assert result["standardised"] == pytest.approx(0.0, abs=0.005)
+    assert result["coverage"] == pytest.approx(1.0)
+
+
+def test_standardised_gap_keeps_a_real_territory_effect():
+    from territorial_chains import standardised_gap
+    rows = []
+    for stratum, home in (("rural", 0.3), ("city", 0.1)):
+        for old in (True, False):
+            rows += [{"stratum": stratum, "old": old, "home": i < home * 500, "weight": 2.0} for i in range(500)]
+    result = standardised_gap(pd.DataFrame(rows), "home", "stratum", "rural", "city", ["old"])
+    assert result["raw"] == pytest.approx(0.2) and result["standardised"] == pytest.approx(0.2)

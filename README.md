@@ -25,8 +25,13 @@ pipeline (v1.5.0) on Loire-Atlantique (Nantes and its hinterland).
 | The regional survey (EDGT Loire-Atlantique 2015) as a second reference | `docs/RESULTS_LOCAL.md` |
 | Map by intercommunalité and commune, matching explorer | project page |
 | What was found in eqasim on the way | `docs/UPSTREAM_NOTES.md` |
-| A matching stage that can replace eqasim's, tried on existing residents | `docs/RESULTS_STRUCTURED.md` |
+| A matching stage that can replace eqasim's, tried on existing residents and in complete runs | `docs/RESULTS_STRUCTURED.md` |
 | That stage, the territory analysis as an eqasim stage, and two patches for eqasim-france | `eqasim_contrib/` |
+| Four more populations generated end to end: the new stage, and eqasim's matching fed with the regional survey | `docs/RESULTS_STRUCTURED.md` |
+| Age, occupation and car ownership, commuting, population groups, distance to the city | `docs/RESULTS_LINKS.md` |
+| Generators trained on the national survey and judged against the regional one | `docs/RESULTS_GENERATORS.md` |
+| Targeted reading of the references of the project description | `docs/LITERATURE.md` |
+| The project description, task by task: what is covered and what is not | `docs/COVERAGE.md` |
 
 ## What was found
 
@@ -63,8 +68,23 @@ pipeline (v1.5.0) on Loire-Atlantique (Nantes and its hinterland).
    against the regional survey. With the 1,798 respondents the national survey
    has in the département, pooling does not recover what the regional survey
    shows; fed with the regional survey, the same stage follows it by territory.
-   The stage has been tried on existing residents, not yet in a full run.
-7. **EMP 2019 is read with the wrong weight for immobility.** Read with person
+   In complete runs of the pipeline, eqasim's default matching fed with the
+   regional survey loses the gap in home-based tours between rural and
+   central-city residents (−0.002 against −0.134 observed); the urban type
+   option (−0.149) and the new stage (−0.124) keep it.
+7. **What a generator learns about territory transfers for one indicator and
+   not for another.** Trained on the national survey and judged against the
+   regional one, the generators that see territory reproduce the regional gap
+   in tours and overstate rural staying home (14% to 15% against 9.4%); those
+   that do not see it do the reverse. No generator comes near the floor.
+8. **Composition explains part of the picture, not all of it.** The national
+   gap in staying home between rural and central-city residents does not
+   depend on age, occupation or car ownership (+5.1 to +5.5 points whatever is
+   equalised). The regional one is nil, and becomes 2 to 3 points once car
+   ownership is equalised. Beyond 30 km from Nantes and Saint-Nazaire more
+   people stay home (11.0% against 8.5% to 8.8%), which the four urban types
+   hide and no variant reproduces.
+9. **EMP 2019 is read with the wrong weight for immobility.** Read with person
    weights, as the pipeline does, 2.6% of people stay home on a weekday; with
    the survey's day weights, 14.0%.
 
@@ -75,7 +95,7 @@ limits are listed on the project page.
 
 ```bash
 pip install -e ".[dev]"
-pytest                                           # 51 tests
+pytest                                           # 53 tests
 
 bash scripts/setup_wsl.sh                        # eqasim-france v1.5.0 and its environment
 bash scripts/download_data.sh                    # open data: INSEE, IGN, data.gouv.fr, SDES
@@ -98,15 +118,19 @@ python site/build_site.py
 bash scripts/install_eqasim_contrib.sh           # copies the two stages into ~/eqasim-france
 bash scripts/run_territory_stage.sh C_entd_urban # the same scoring, run inside eqasim
 python scripts/try_matching_stage.py ~/eqasim-france data output/A_entd_local data/urban_type/UU2020_au_01-01-2026.zip results
-bash scripts/run_remaining.sh                    # the populations not generated yet (S, T, F, G), in one go
+bash scripts/run_remaining.sh                    # populations S, T, F and G and the territory stage, in one go
+python scripts/regional_source_age.py output data/urban_type/UU2020_au_01-01-2026.zip results
+
+python scripts/territory_links.py ~/eqasim-france data output data/urban_type/UU2020_au_01-01-2026.zip data/iris_2024/CONTOURS-IRIS_3-0__GPKG_LAMB93_FXX_2024-01-01.7z results
+python scripts/benchmark_transfer.py ~/eqasim-france results 3
 ```
 
 Which environment for what: the library and its tests need only numpy and
 pandas. The scoring scripts read parquet tables and Excel workbooks
 (`pip install -e ".[analysis]"`), or run as they are inside the eqasim-france
 environment. `survey_contrasts.py`, `regional_reference.py`,
-`try_matching_stage.py` and the matching generator import eqasim itself, so
-they need that environment. The generators
+`try_matching_stage.py`, `territory_links.py` and the matching generator import
+eqasim itself, so they need that environment. The generators
 need `".[models]"`. The pipeline and simulation steps need what
 `docs/SETUP_WSL.md` and `docs/SIMULATION.md` list (uv, a Java 25 JDK, Maven).
 
@@ -118,7 +142,7 @@ behind finding 1 in isolation.
 
 ```
 territorial_chains/   chains.py (chains, indicators)  weighted.py (survey statistics)
-                      compare.py (fidelity, contrast retention)
+                      compare.py (fidelity, contrast retention, gaps with composition equalised)
                       generators.py (matching, Bayesian network, transformer, variational autoencoder, GAN)
                       simulation.py (mode shares and travel per resident from MATSim trips)
 tests/                pytest suite

@@ -41,10 +41,20 @@ The SDES note on the public files prescribes `pond_jour` for local mobility
 (details in `docs/RESULTS_SURVEYS.md`); the note gives no rule for immobility
 itself, so the 14.0% is this study's application of its rule.
 
-**5. Some households leave the pipeline without a home commune.**
-0 in the variant with local donors; 23 to 105 matched persons in the four
-variants with national donors, in every seed (`iris_id`, `commune_id`,
-`departement_id` all missing in `households`). Cause not investigated.
+**5. Households whose members never pass by home are written without a home commune.**
+0 in the variant with local donors of the national survey; 23 to 105 matched
+persons in the four variants with national donors, in every seed, and 37 to 101
+in the four populations generated later (S, T, F and G). `iris_id`,
+`commune_id` and `departement_id` are all missing in `households`. Inside the
+pipeline every household has a commune: the analysis stage, which reads
+`synthesis.population.spatial.home.zones`, counts all 138,915 persons. The
+codes are lost in `synthesis/output.py`, which takes them from the activities
+with purpose `home` (the merge after "Prepare households"). A one-person
+household whose matched day starts and ends away from home has no such
+activity. Checked on two populations: the 105 households concerned in C and the
+39 in F have no home activity at all, and they are exactly the households
+without one. Taking the codes from `synthesis.population.spatial.home.zones`
+would avoid it. Not patched here.
 
 **6. About 3% of the population's trips are missing from `eqasim_trips`, because some agents never finish their day.**
 In both simulated variants, 3% of persons have fewer simulated trips than
@@ -80,14 +90,16 @@ Written against v1.5.0 and kept in `eqasim_contrib/`, with what was tested and
 what was not in its README. None has been submitted.
 
 - `analysis.synthesis.chains_by_territory`, a chain analysis by urban type next
-  to the existing one by age and sex. Run by synpp with eqasim's ENTD stages on
-  two saved populations, it reproduces this repository's own scoring.
+  to the existing one by age and sex. Run inside the pipeline on variant C, it
+  reproduces this repository's own scoring.
 - `synthesis.population.matched_structured`, a matching stage that draws the
   structure of the day first and takes the urban type from the home commune,
   which removes the blind spot of note 2. It replaces
   `synthesis.population.matched` through synpp's aliases. Tried on the residents
-  of a saved population (`docs/RESULTS_STRUCTURED.md`).
+  of a saved population and then in two complete runs
+  (`docs/RESULTS_STRUCTURED.md`).
 - A patch that keeps the home zone of EDGT Loire-Atlantique respondents and
   derives their urban type, so that `use_urban_type` can be combined with
-  `hts: edgt_44` (note 2 still applies to the census side).
+  `hts: edgt_44` (note 2 still applies to the census side). Three populations
+  were generated with it.
 - A patch for the Java version check of note 1.

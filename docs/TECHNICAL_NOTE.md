@@ -48,7 +48,7 @@ rural minus central-city gap of an indicator, in the population and in the
 survey. Variants A and C were repeated over five random seeds, and three seeds of
 each were simulated with MATSim on an OpenStreetMap network with six GTFS
 timetables. Observed and generated chains go through the same code, which is
-covered by 51 tests.
+covered by 53 tests.
 
 ## 3. Results
 
@@ -110,6 +110,15 @@ location step and not from the matched chain. Only C reproduces the gap in tours
 So the option is not simply worse locally. It brings in one difference that both
 surveys support and one that the regional survey contradicts.
 
+Who lives where does not explain the national gap in staying home. It stays
+between +5.1 and +5.5 points when age, occupation and car ownership are
+equalised between rural and central-city respondents. In Loire-Atlantique the
+raw gap is nil and becomes 2 to 3 points once car ownership is equalised, since
+1.6% of rural respondents live without a car against 17% in central cities.
+A second description of territory shows what the four urban types hide. Beyond
+30 km from Nantes and Saint-Nazaire, 11.0% of regional respondents stay home
+(9.9 to 12.2), against 8.5% to 8.8% nearer. No variant reproduces it.
+
 ### 3.4 Once simulated, trips change and car distance barely does
 
 Over three seeds, rural residents make 18% fewer trips under C than under A
@@ -144,7 +153,20 @@ What decides the result is whether the model sees territory, not which model it
 is. No model is clearly better than matching with the urban type. The Bayesian
 network and the autoencoder are level with it, the transformer is behind, and a
 plain untuned GAN is far behind. Structure search never linked territory to the
-chain on its own, so that edge had to be imposed.
+chain on its own, so that edge had to be imposed. Generated chains are as
+coherent as reported ones (93% to 94% of days start and end at home, against
+94.7%), except for the GAN (89% to 91%).
+
+The same models were then trained on the whole national survey and judged
+against the 20,799 respondents of the regional one. None comes near the floor
+(0.029 for all residents). The best is eqasim's default matching at 0.093, and
+the national respondents taken as they are lie at 0.127. For rural residents
+the order turns over. The versions that see territory give them 14.2% to 15.3%
+of days at home against 9.4% observed, and the versions that do not see it 8.5%
+to 11.3%. On home-based tours it is the reverse. The regional gap between rural and
+central-city respondents is −0.13, the versions that see territory give −0.09
+to −0.11 and the others +0.02 to +0.07. What a generator learns about territory
+in one survey transfers for one indicator and not for the other.
 
 ### 3.6 A generator that fits inside the pipeline
 
@@ -170,22 +192,40 @@ With the national survey as source the stage is about as close to that survey as
 C, and lies between A and C against the regional survey, which it never sees.
 Pooling does not recover the local pattern, because the national survey has too
 few respondents in the département. Fed with the regional survey, the stage
-follows it by territory. That last row compares a population with its own source,
-so it shows that the stage works with a local survey, not that the result is
-right. No full pipeline run has been made with the stage yet.
+follows it by territory.
+
+Four populations were then generated end to end, one seed each. S and T use the
+new stage with the national and the regional survey. F and G use eqasim's own
+matching fed with the regional survey, without and with the urban type. S gives
+the distances of the trial. F, G and T are judged against their own source, so
+all three are close to it (0.017 to 0.059). They differ on the contrast between
+territories.
+
+| Rural minus central city | Regional survey | F, default | G, urban type | T, new stage |
+|---|---|---|---|---|
+| Tours per mobile person | −0.134 | −0.002 | −0.149 | −0.124 |
+| Staying home | +0.6 points | +0.2 | +2.6 | +1.7 |
+| Staying home, age mix of the survey | | −1.1 | +1.1 | +0.6 |
+
+Even with a local survey as source, default matching loses the gap in tours,
+because the home territory is not among its attributes. The option and the new
+stage both keep it. The excess of G and T on staying home is mostly age. The
+census counts 20% of rural residents over 64 and the survey of 2015 counts 13%.
+G keeps the blind spot of section 3.1 (45% in isolated cities).
 
 ## 4. What was prepared for eqasim
 
 Four pieces were written against v1.5.0 in the project's own style and are kept
 in `eqasim_contrib/`. The first is the matching stage of section 3.6. The second
 is an analysis stage that scores chains by urban type inside the pipeline. Run
-with eqasim's survey stages on a saved population, it reproduces this study's own
-scoring. The third is a patch that gives respondents of the regional survey an
+inside the pipeline on variant C, it reproduces this study's own scoring. The third is a patch that gives respondents of the regional survey an
 urban type, which v1.5.0 cannot do. The fourth fixes the Java version check,
-which stops the pipeline with recent JDKs. Eight observations made while running
-the pipeline are written up in `docs/UPSTREAM_NOTES.md`. One of them concerns EMP
-2019, where 2.6% of people stay home on a weekday with the person weights the
-pipeline reads, and 14.0% with the survey's day weights.
+which stops the pipeline with recent JDKs. The first three ran in complete
+pipeline runs. Eight observations made while running the pipeline are written up
+in `docs/UPSTREAM_NOTES.md`. One concerns EMP 2019, where 2.6% of people stay
+home on a weekday with the person weights the pipeline reads, and 14.0% with the
+survey's day weights. Another is that one-person households whose matched day
+never passes by home are written without a home commune.
 
 ## 5. Limits
 
@@ -195,19 +235,21 @@ pipeline reads, and 14.0% with the survey's day weights.
   the regional survey mixes face-to-face and telephone interviews by territory.
   The direction of the reversal is supported by two samples. Its size is not
   established.
-- Variants B, D and E have one seed. A and C have five, three of them simulated.
-- Four classes of urban type are coarse. A finer description of territory may
-  show contrasts that this one hides.
-- The new matching stage and the patches have been tested on saved populations
-  and on the survey files, not in a complete pipeline run.
+- Variants B, D, E, S, T, F and G have one seed. A and C have five, three of
+  them simulated. F, G and T are judged against the survey they were built from.
+- Four classes of urban type are coarse and have no peri-urban class. Public
+  transport supply and accessibility were not measured.
+- The generators write the order of activities only, and the transfer test has
+  one target territory.
 
 ## 6. Next steps
 
-Generate populations with the new stage and with the regional survey as source,
-and score them on distances and in simulation. Replace the four urban types with
-continuous descriptors of territory such as density and accessibility. Repeat the
-comparison in a second département that has its own survey. Propose the analysis
-stage and the two patches to eqasim-france.
+Simulate the populations built with the new stage. Replace the four urban types
+with continuous descriptors of territory such as density, accessibility and
+public transport supply, and add a peri-urban class. Repeat the comparison in a
+second département that has its own survey. Propose the analysis stage and the
+two patches to eqasim-france. A task-by-task comparison with the project
+description is in `docs/COVERAGE.md`.
 
 ## References
 
@@ -218,5 +260,5 @@ Research Part C, 130, 103291.
 Joubert, J. W. and de Waal, A. (2020). Activity-based travel demand generation
 using Bayesian networks. Transportation Research Part C, 120, 102804.
 
-Shone, F. and Hillel, T. (2024). Deep generative models for activity sequences,
-as cited in the position description.
+Shone, F. and Hillel, T. (2024). Activity sequence modelling with deep
+generative models. hEART 2024, Espoo.

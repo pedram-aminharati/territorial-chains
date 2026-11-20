@@ -320,6 +320,33 @@
     <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="localfid-table"></div></details>
   </figure>
 
+  <figure class="card" id="compcard">
+    <div class="figtitle">Is the rural gap a matter of who lives there?</div>
+    <div class="figsub">Rural minus central-city gap in the share of people staying home, raw and with the mix of
+    age, occupation and car ownership equalised between the two groups. Percentage points, with 95% intervals.</div>
+    <div class="tablescroll" id="comp-table"></div>
+    <figcaption>Nationally the gap is not a matter of composition: it is {{link_nat_raw}} points raw and
+    {{link_nat_low}} to {{link_nat_high}} once the two groups are given the same mix. In the regional survey it is
+    {{link_reg_raw}} raw and {{link_reg_plain}} with the same age and occupation. With car ownership equalised as
+    well it becomes {{link_reg_car_low}} to {{link_reg_car_high}}: almost every rural household of the département
+    has a car, and people without one stay home twice as often. So territory may act locally in the same direction
+    as nationally, hidden by car ownership. That last figure rests on the few rural respondents without a car.</figcaption>
+  </figure>
+
+  <figure class="card" id="bandcard">
+    <div class="figtitle">A second description of territory: distance to the city</div>
+    <div class="figsub">Communes grouped by the straight-line distance from their centre to Nantes or
+    Saint-Nazaire, whichever is nearer.</div>
+    <div class="chart panels c2" id="bands"></div>
+    <div class="legend" id="bands-legend"></div>
+    <figcaption>The regional survey does show more people staying home far from the two cities: {{band_far}}
+    beyond 30 km ({{band_far_ci}}) against {{band_near_low}} to {{band_near_high}} nearer. The four urban types
+    hide this, because rural communes lie at every distance. No variant reproduces it: A and B are flat, and C
+    rises to {{band_C_far}} from 15 km outwards, too much and too early. Distance or accessibility would give a
+    generator something that the urban type does not.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="bands-table"></div></details>
+  </figure>
+
   <div class="prose">
     <p><b>What this does and does not show.</b> The surveys differ in more than place: seven years apart, and the
     regional survey was run face to face in the three agglomerations and by telephone elsewhere, so survey mode and
@@ -370,6 +397,19 @@
     <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="gaps-table"></div></details>
   </figure>
 
+  <figure class="card" id="groupcard">
+    <div class="figtitle">Error on the chain distribution, by population group</div>
+    <div class="figsub">Hellinger distance for all residents, by occupation. "Other" gathers children, students
+    and adults without occupation. Darker is worse; one scale for both grids.</div>
+    <div class="chart panels c2" id="groups"></div>
+    <figcaption>By group the ranking is less clear-cut than by territory. Against the regional survey, people in
+    work are furthest under A ({{grp_work_A}}, against {{grp_work_B}} for B and {{grp_work_C}} for C): A has
+    1,667 donors in all, few once they are split by group. The "other" group is the worst reproduced against the
+    regional survey in every variant ({{grp_other_low}} to {{grp_other_high}}). That C is the furthest from the
+    regional survey holds territory by territory, not group by group.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="groups-table"></div></details>
+  </figure>
+
   <figure class="card">
     <div class="figtitle">How many persons are matched on every attribute</div>
     <div class="figsub">As reported by the pipeline. The last attribute in the list is the département.</div>
@@ -393,6 +433,19 @@
     regional survey agree. Levels sit below both surveys in all territories. A likely reason is that survey means
     include long trips leaving the area while the population is generated for a single département.</figcaption>
     <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="distlines-table"></div></details>
+  </figure>
+
+  <figure class="card" id="commutecard">
+    <div class="figtitle">Home-to-work distance, by home territory</div>
+    <div class="figsub">Median straight-line distance of the trip from home to work, in kilometres, for the people
+    who make one.</div>
+    <div class="chart" id="commute"></div>
+    <div class="legend" id="commute-legend"></div>
+    <figcaption>Commuting distance in the regional survey rises from {{com_reg_central}} km in central cities to
+    {{com_reg_rural}} km in rural communes, and every population follows it within {{com_gap}} km. Workplaces come
+    from census commuting flows, not from the matched day. Distances in the national survey were recorded in whole
+    kilometres, which is why two of its medians are equal.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="commute-table"></div></details>
   </figure>
 </section>
 
@@ -528,10 +581,38 @@
     models are the only ones that write chains no respondent reported ({{gen_novel}}, {{gen_vae_novel}} and
     {{gen_gan_novel}} of their output). Structure search on the data never linked territory to the chain
     ({{gen_edges}} of {{gen_splits}} splits): the edge had to be imposed, which a tabular network makes costly and a
-    neural model makes cheap. This benchmark is national: it asks whether a
+    neural model makes cheap. Chains are coherent in every family but one: {{gen_closed_low}} to {{gen_closed_high}}
+    of generated days start and end at home, against {{gen_closed_obs}} of reported days, and {{gen_closed_gan}}
+    for the GAN. This benchmark is national: it asks whether a
     generator can reproduce the national survey's pattern. Whether that pattern should be imposed on one département
     is the question of the section on the regional survey.</figcaption>
     <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="generror-table"></div></details>
+  </figure>
+
+  <figure class="card" id="transfercard">
+    <div class="figtitle">Moved to another territory</div>
+    <div class="figsub">The same generators, trained on every respondent of the national survey and asked for a day
+    for each respondent of the regional survey. Hellinger distance to what the regional respondents reported
+    (lower is better), {{tr_repeats}} trainings. The vertical line is the floor: one half of the regional survey
+    against the other.</div>
+    <div class="chart panels c2" id="transfer"></div>
+    <div class="legend" id="transfer-legend"></div>
+    <figcaption>No generator trained on the national survey comes near the floor. Taken as they are, the national
+    respondents of the same urban type lie at {{tr_national_all}} from the regional survey
+    ({{tr_national_rural}} for rural residents), and a generator that reproduced the national survey perfectly
+    would inherit that distance. Every model except the GAN comes out below it, eqasim's default matching by the
+    widest margin ({{tr_match_all}} for all residents) and the Bayesian network by very little ({{tr_bn_all}}).
+    For rural residents the order of the national test turns over. The versions that do not see territory score
+    {{tr_blind_low}} to {{tr_blind_high}} on average and the versions that see it {{tr_aware_low}} to
+    {{tr_aware_high}}, with ranges that overlap for the Bayesian network and the transformer. The reason is the
+    one found with the populations. Rural respondents of the regional survey stay home {{tr_home_obs}} of the
+    time; the blind versions give them {{tr_home_blind}} and the aware ones {{tr_home_aware}}, close to the
+    national rural figure ({{tr_home_national}}). On home-based tours it is the other way round. The regional
+    gap between rural and central-city respondents is {{tr_tours_obs}} per mobile person; the blind versions give
+    {{tr_tours_blind}} and the aware ones {{tr_tours_aware}}, except the Bayesian network ({{tr_tours_bn}}), whose
+    territory edge points to going out only. What a generator learns about territory in one survey transfers for
+    one indicator and not for the other.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="transfer-table"></div></details>
   </figure>
 
   <figure class="card" id="structuredcard">
@@ -551,8 +632,32 @@
     residents stay home under S, against {{st_home_rural_C}} under C and {{loc_home_rural}} in the regional
     survey. Fed with the regional survey instead, the same stage reproduces
     that survey by territory ({{st_regional_low}} to {{st_regional_high}}), which shows that it works with a local
-    source, not that it is right. No full pipeline run has been made with this stage yet.</figcaption>
+    source, not that it is right. The next figure shows the stage in complete runs of the pipeline.</figcaption>
     <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="structured-table"></div></details>
+  </figure>
+
+  <figure class="card" id="runscard">
+    <div class="figtitle">The new stage in complete runs of the pipeline</div>
+    <div class="figsub">{{run_count}} more populations generated end to end with eqasim, 10% sample, one seed
+    each: S and T with the new stage, F and G with eqasim's own matching fed with the regional survey. Top,
+    Hellinger distance to each survey; darker is worse. Bottom, two indicators by urban type against the regional
+    survey.</div>
+    <div class="chart panels c2" id="runs"></div>
+    <div class="chart panels c2" id="runs-lines" style="margin-top:14px"></div>
+    <div class="legend" id="runs-legend"></div>
+    <figcaption>The complete runs confirm the trial on saved residents. S is at {{run_S_nat}} from the national
+    survey and {{run_S_reg}} from the regional one. The three populations built from the regional survey are
+    all close to it on the chain distribution (F {{run_F_reg}}, G {{run_G_reg}}, T {{run_T_reg}}), G the
+    closest. They differ more on the contrast between territories. Rural residents of the
+    regional survey make fewer home-based tours than those of central cities ({{run_obs_tours}} per mobile
+    person). With eqasim's default matching that gap disappears even though the source is the regional survey
+    itself ({{run_F_tours}} in F), because the home territory is not among the matching attributes. The urban
+    type option gives {{run_G_tours}} (G) and the new stage {{run_T_tours}} (T). On staying home the regional
+    gap is {{run_obs_home}} points; F gives {{run_F_home}}, G {{run_G_home}} and T {{run_T_home}}. Much of the excess in G and T
+    is age and not the generator: the census counts {{run_old_population}} of rural residents over 64 and the
+    survey of 2015 {{run_old_survey}}. With the age mix of the survey respondents the gaps become {{run_F_age}},
+    {{run_G_age}} and {{run_T_age}}. One seed each, and F, G and T are judged against their own source.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="runs-table"></div></details>
   </figure>
 </section>
 
@@ -621,7 +726,7 @@ python scripts/evaluate_simulation.py output/C_entd_urban_sim data/urban_type/UU
 python scripts/export_page_data.py output data/urban_type/UU2020_au_01-01-2026.zip data/iris_2024/CONTOURS-IRIS_3-0__GPKG_LAMB93_FXX_2024-01-01.7z
 python scripts/try_matching_stage.py ~/eqasim-france data output/A_entd_local data/urban_type/UU2020_au_01-01-2026.zip results
 python site/build_site.py                     # rebuilds this page from results/
-pytest                                        # 51 tests</code></pre>
+pytest                                        # 53 tests</code></pre>
 
   <div class="prose"><p>A four-page technical note summarises the study and its limits:
   <a href="TECHNICAL_NOTE.pdf">TECHNICAL_NOTE.pdf</a>.</p></div>
@@ -629,12 +734,15 @@ pytest                                        # 51 tests</code></pre>
   <div class="prose"><ul>
     <li><b>Hörl and Balac (2021)</b> describe the matching and validate chains by ranking the most frequent ones against the survey; the top-chain figure here does the same, by territory. Their paper also notes that the census gives residence only at département level for municipalities under 10,000 inhabitants, which is the origin of the small-town effect measured above.</li>
     <li>The same paper handles sampling noise with repeated realisations over random seeds, reporting the mean and range. The Stability section does the same for variants A and C: five populations and three simulations each.</li>
-    <li><b>Joubert and de Waal (2020)</b> generate chains with Bayesian networks and <b>Shone and Hillel (2024)</b> with deep generative models, judging output by its distribution and by how much of it is new. Both families are implemented here (a Bayesian network, a transformer, a variational autoencoder and a GAN) and scored against matching on held-out respondents, with repeated splits.</li>
+    <li><b>Joubert and de Waal (2020)</b> generate chains with a Bayesian network and <b>Shone and Hillel (2024)</b> with variational autoencoders, which they judge on correctness and on how much of the output is new. Both are implemented here and scored against matching on held-out respondents, with repeated splits. A transformer and a GAN were added for comparison.</li>
+    <li><b>Madre, Axhausen and Brög (2007)</b> conclude that 8% to 12% of people should be found at home in a one-day weekday diary, and that surveys differ partly through their protocol. This is a check on generated populations and a caution on the difference between the two surveys used here. A short reading of the references of the project description is in <code>docs/LITERATURE.md</code>.</li>
   </ul></div>
 </section>
 
 <section id="roadmap">
   <h2>Status and limits</h2>
+  <p class="sectionlead">What the study covers of the project description, task by task, and what it does not, is
+  written up in <a href="{{repo}}/blob/main/docs/COVERAGE.md"><code>docs/COVERAGE.md</code></a>.</p>
   <div class="tablescroll"><table>
     <thead><tr><th>Step</th><th>Status</th></tr></thead>
     <tbody>
@@ -650,19 +758,25 @@ pytest                                        # 51 tests</code></pre>
       <tr><td>Territory analysis written as an eqasim stage, urban type for the regional survey and Java version fix as patches (<code>eqasim_contrib/</code>), tested on saved populations and on the survey files</td><td><span class="status done">done</span></td></tr>
       <tr><td>A matching stage that replaces eqasim's (structure of the day first, local and national respondents pooled), tried on the residents of variant A</td><td><span class="status done">done</span></td></tr>
       <tr><td>Four-page technical note</td><td><span class="status done">done</span></td></tr>
-      <tr><td>The stages and the patches run inside a complete eqasim run (variants S and T)</td><td><span class="status next">next</span></td></tr>
-      <tr><td>Populations built from the regional survey with eqasim's own matching (variants F and G)</td><td><span class="status next">next</span></td></tr>
-
-
+      <tr><td>The stages and the patches run inside complete eqasim runs (variants S and T)</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Populations built from the regional survey with eqasim's own matching (variants F and G)</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Links with age, occupation and car ownership, commuting distance, fidelity by population group, distance to the city as a second description of territory</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Generators trained on the national survey and judged against the regional one (transferability)</td><td><span class="status done">done</span></td></tr>
+      <tr><td>The stages and the patches proposed to eqasim-france</td><td><span class="status next">next</span></td></tr>
+      <tr><td>Populations S, T, F and G simulated; the comparison repeated in a second département with its own survey</td><td><span class="status next">next</span></td></tr>
+      <tr><td>A typology with a peri-urban class (INSEE commuting areas), public transport supply and accessibility as descriptors of territory</td><td><span class="status next">next</span></td></tr>
+      <tr><td>A review of the French literature on peri-urban and rural mobility (<code>docs/LITERATURE.md</code> covers the references of the project description only)</td><td><span class="status next">next</span></td></tr>
     </tbody>
   </table></div>
   <h3>Limits</h3>
   <div class="prose"><ul>
     <li>Two references are used and they disagree on staying home: the national survey by urban type (2008) and the regional survey (2015). Neither is the population's own year, 2022, and they differ in protocol.</li>
     <li>Variants A and C have five seeds (three simulated). Variants B, D and E, the donor grids, the top chains and the maps show one seed.</li>
-    <li>In the variants with national donors, 23 to 105 matched persons belong to a household that leaves the pipeline without a home commune. They are left out of every table by territory; the cause has not been investigated.</li>
+    <li>In the variants with national donors, 23 to 105 matched persons belong to a household that leaves the pipeline without a home commune. They are left out of every table by territory. They are one-person households whose matched day never passes by home, and eqasim's output stage takes the home commune from home activities (note 5 in <code>docs/UPSTREAM_NOTES.md</code>).</li>
     <li>The simulation uses mode-choice parameters calibrated for Île-de-France and current timetables. Its levels are not a forecast for Loire-Atlantique; only differences between variants are read.</li>
-    <li>Urban-unit status has four classes; a finer typology (density grid, accessibility) may show contrasts this one hides.</li>
+    <li>Urban-unit status has four classes and no peri-urban one. Distance to the nearest large city already shows a contrast that the four classes hide; density, accessibility and public transport supply were not measured.</li>
+    <li>Populations S, T, F and G have one seed and were not simulated. F, G and T are judged against the survey they were built from.</li>
+    <li>The transfer test has one target territory. Generators write the order of activities only, so the coherence of times and durations is not tested.</li>
     <li>The EMP weighting result follows the rule in the statistical office's note on the public files, applied here to people; the note does not treat immobility itself.</li>
     <li>In the simulations about 3% of planned trips are missing from the output. When the last iteration ends, about 4,800 agents have not finished their day and none was removed, which accounts for 95% of the persons concerned. Their last recorded trip starts around noon. What holds them up was not identified.</li>
   </ul></div>
@@ -688,7 +802,11 @@ const SERIES = {
   B:{name:'B · default, national donors', color:'var(--s2)'},
   C:{name:'C · urban type added', color:'var(--s3)'},
   D:{name:'D · default, national donors', color:'var(--s4)'},
-  E:{name:'E · urban type added', color:'var(--s5)'}
+  E:{name:'E · urban type added', color:'var(--s5)'},
+  S:{name:'S · new stage, national survey', color:'var(--s4)'},
+  F:{name:'F · eqasim matching, regional survey', color:'var(--s1)'},
+  G:{name:'G · urban type added, regional survey', color:'var(--s3)'},
+  T:{name:'T · new stage, regional survey', color:'var(--s5)'}
 };
 const RAMP_LIGHT = ['#cde2fb','#b7d3f6','#9ec5f4','#86b6ef','#6da7ec','#5598e7','#3987e5','#2a78d6','#256abf','#1c5cab','#184f95','#104281','#0d366b'];
 const dark = () => matchMedia('(prefers-color-scheme: dark)').matches;
@@ -780,15 +898,16 @@ function heatGrid(parent, {title, sub, rows, cols, values, max, fmt, rowHead, la
 }
 
 /* ---------- lines over the four territories ---------- */
-function lineChart(parent, {title, sub, series, ymax, yfmt}) {
+function lineChart(parent, {title, sub, series, ymax, yfmt, labels, ymin = 0}) {
+  const T = labels || DATA.territories.map(t => t.label);   // shadows the territory labels when another axis is given
   const box = h('div');
   const p = h('div', {class: 'paneltitle'}, title + ' '); if (sub) p.appendChild(h('span', {}, sub)); box.appendChild(p);
   const W = 460, H = 270, m = {l: 40, r: 58, t: 10, b: 30};
   const x = i => m.l + (W - m.l - m.r) * i / (T.length - 1);
-  const y = v => m.t + (H - m.t - m.b) * (1 - v / ymax);
+  const y = v => m.t + (H - m.t - m.b) * (1 - (v - ymin) / (ymax - ymin));
   const s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': title});
   for (let k = 0; k <= 4; k++) {
-    const v = ymax * k / 4;
+    const v = ymin + (ymax - ymin) * k / 4;
     s.appendChild(svg('line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: k ? 'gridline' : 'axisline'}));
     s.appendChild(svg('text', {x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick'}, yfmt(v)));
   }
@@ -1333,9 +1452,67 @@ function render() {
     const ge = document.getElementById('generror'); ge.replaceChildren();
     forest(ge, {title: 'Rural residents', rows: G.methods.map(m => ({name: m.name, v: m.rural_error, aware: m.aware})), ref: G.floor_rural, refLabel: 'Floor', fmt: (v, d) => v.toFixed(d ? 3 : 2), xmin: 0.04, xmax: 0.24});
     forest(ge, {title: 'All residents', rows: G.methods.map(m => ({name: m.name, v: m.all_error, aware: m.aware})), ref: G.floor_all, refLabel: 'Floor', fmt: (v, d) => v.toFixed(d ? 3 : 2), xmin: 0.04, xmax: 0.24});
-    table('generror-table', ['Generator', 'Rural: mean', 'Rural: range', 'All: mean', 'All: range', 'Unreported chains'],
-      G.methods.map(m => [m.name, f3(m.rural_error[0]), f3(m.rural_error[1]) + ' to ' + f3(m.rural_error[2]), f3(m.all_error[0]), f3(m.all_error[1]) + ' to ' + f3(m.all_error[2]), pct(m.novel, 1)])
-        .concat([['Floor (survey against itself)', f3(G.floor_rural), '', f3(G.floor_all), '', '']]));
+    table('generror-table', ['Generator', 'Rural: mean', 'Rural: range', 'All: mean', 'All: range', 'Unreported chains', 'Days that start and end at home'],
+      G.methods.map(m => [m.name, f3(m.rural_error[0]), f3(m.rural_error[1]) + ' to ' + f3(m.rural_error[2]), f3(m.all_error[0]), f3(m.all_error[1]) + ' to ' + f3(m.all_error[2]), pct(m.novel, 1), pct(m.closed, 1)])
+        .concat([['Floor (survey against itself)', f3(G.floor_rural), '', f3(G.floor_all), '', '', pct(G.observed_closed, 1)]]));
+  }
+
+  // the same generators judged against the regional survey
+  const trc = document.getElementById('transfercard');
+  if (DATA.transfer) {
+    const X = DATA.transfer, f3 = v => v.toFixed(3), el = document.getElementById('transfer'); el.replaceChildren();
+    const fmt = (v, d) => v.toFixed(d ? 3 : 2);
+    forest(el, {title: 'Rural residents', rows: X.methods.map(m => ({name: m.name, v: m.rural_error, aware: m.aware})), ref: X.floor_rural, refLabel: 'Floor', fmt, xmin: 0.04, xmax: 0.24});
+    forest(el, {title: 'All residents', rows: X.methods.map(m => ({name: m.name, v: m.all_error, aware: m.aware})), ref: X.floor_all, refLabel: 'Floor', fmt, xmin: 0.0, xmax: 0.24});
+    const lg = document.getElementById('transfer-legend'); lg.replaceChildren();
+    [['var(--s1)', 'Sees the home territory'], ['var(--s2)', 'Does not']].forEach(([c, n]) => { const sp = h('span'); sp.appendChild(h('i', {class: 'box', style: 'background:' + c})); sp.appendChild(document.createTextNode(n)); lg.appendChild(sp); });
+    table('transfer-table', ['Generator', 'Rural: mean', 'Rural: range', 'All: mean', 'All: range', 'Rural stay-home'],
+      X.methods.map(m => [m.name, f3(m.rural_error[0]), f3(m.rural_error[1]) + ' to ' + f3(m.rural_error[2]), f3(m.all_error[0]), f3(m.all_error[1]) + ' to ' + f3(m.all_error[2]), pct(m.rural_home, 1)])
+        .concat([['National respondents of the same urban type, as they are', f3(X.national.rural), '', f3(X.national.all), '', pct(X.national.rural_home, 1)],
+                 ['Floor (regional survey against itself)', f3(X.floor_rural), '', f3(X.floor_all), '', pct(X.observed_rural_home, 1)]]));
+  } else if (trc) trc.hidden = true;
+
+  // links: composition, distance to the city, population groups, commuting
+  ['compcard', 'bandcard', 'groupcard', 'commutecard'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = !DATA.links; });
+  if (DATA.links) {
+    const K = DATA.links, pts = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(100 * v).toFixed(1);
+    const trio = r => pts(r[0]) + ' (' + pts(r[1]) + ' to ' + pts(r[2]) + ')';
+    const home = K.composition.filter(r => r.indicator === 'immobile_share');
+    const find = (survey, attributes, mix) => home.find(r => r.survey === survey && r.attributes === attributes && r.mix === mix);
+    table('comp-table', ['Survey', 'Raw gap', 'Same age and occupation', 'Same age, occupation and car ownership'],
+      [['entd', 'National survey (ENTD 2008)'], ['edgt_44', 'Regional survey (EDGT 2015)']].flatMap(([key, name]) => [
+        [name + ', rural respondents given the central-city mix', trio(find(key, 'age and occupation', 'central city').raw), trio(find(key, 'age and occupation', 'central city').std), trio(find(key, 'age, occupation and car', 'central city').std)],
+        [name + ', central-city respondents given the rural mix', '', trio(find(key, 'age and occupation', 'rural').std), trio(find(key, 'age, occupation and car', 'rural').std)]]));
+
+    const B = K.bands, bs = B.sources, keys = ['loc', 'A', 'B', 'C'].filter(k => bs[k]);
+    const bd = document.getElementById('bands'); bd.replaceChildren();
+    const axis = B.labels.map(l => l.replace(' km', ''));
+    lineChart(bd, {title: 'Staying home', sub: '· by km to the nearest city', ymax: 0.2, yfmt: (v, d = 0) => pct(v, d), labels: axis,
+      series: keys.map(k => ({key: k, values: bs[k].immobile}))});
+    lineChart(bd, {title: 'Distance to the regional survey', sub: '· Hellinger', ymax: 0.2, yfmt: (v, d = 0) => v.toFixed(d ? 3 : 2), labels: axis,
+      series: keys.filter(k => k !== 'loc').map(k => ({key: k, values: bs[k].distance}))});
+    legend('bands-legend', keys);
+    table('bands-table', ['', ...B.labels], keys.flatMap(k => [
+      [SERIES[k].name + ', staying home', ...bs[k].immobile.map((v, i) => pct(v, 1) + (bs[k].low[i] === null ? '' : ' (' + pct(bs[k].low[i], 1) + ' to ' + pct(bs[k].high[i], 1) + ')'))],
+      ...(k === 'loc' ? [['respondents', ...bs[k].persons.map(v => v.toLocaleString('en'))]] : [[SERIES[k].name + ', distance to the regional survey', ...bs[k].distance.map(v => v.toFixed(3))]])]));
+
+    const gr = document.getElementById('groups'); gr.replaceChildren();
+    const vs = ['A', 'B', 'C'].filter(k => K.groups.entd[k]), f3 = v => v.toFixed(3);
+    const vnames = vs.map(k => k + ' · ' + (k === 'A' ? 'default, local' : k === 'B' ? 'default, national' : 'urban type'));
+    const cols = K.group_names.map(n => n[0].toUpperCase() + n.slice(1));
+    heatGrid(gr, {title: 'Against the national survey', sub: '· ENTD 2008', rows: vnames, cols, values: vs.map(k => K.groups.entd[k].all), max: 0.25, fmt: f3, labelW: 150, cellH: 34});
+    heatGrid(gr, {title: 'Against the regional survey', sub: '· EDGT 2015', rows: vnames, cols, values: vs.map(k => K.groups.edgt_44[k].all), max: 0.25, fmt: f3, labelW: 150, cellH: 34});
+    table('groups-table', ['Variant', 'Reference', 'Residents', ...cols], vs.flatMap((k, i) => [['entd', 'National survey'], ['edgt_44', 'Regional survey']].flatMap(([ref, rname]) =>
+      [['all', 'all'], ['rural', 'rural']].map(([scope, sname]) => [vnames[i], rname, sname, ...K.groups[ref][k][scope].map(f3)]))));
+
+    const cm = document.getElementById('commute'); cm.replaceChildren();
+    const ck = ['obs', 'loc', 'A', 'B', 'C'].filter(k => K.commuting[k]), wrap = h('div', {style: 'max-width:520px'});
+    lineChart(wrap, {title: 'Median home-to-work distance', sub: '· km, straight line', ymax: 16, yfmt: (v, d = 0) => v.toFixed(d) + ' km',
+      series: ck.map(k => ({key: k, values: K.commuting[k].median}))});
+    cm.appendChild(wrap);
+    legend('commute-legend', ck);
+    table('commute-table', ['', ...T], ck.flatMap(k => [[SERIES[k].name + ', median km', ...K.commuting[k].median.map(v => v.toFixed(1))],
+      [SERIES[k].name + ', share of people with such a trip', ...K.commuting[k].share.map(v => pct(v, 0))]]));
   }
 
   // structured matching, tried on existing residents
@@ -1353,6 +1530,31 @@ function render() {
     if (X.edgt_44) body.push(['T · structure first, regional survey as source', 'National survey', ...X.edgt_44.entd.hellinger.map(range)], ['T · structure first, regional survey as source', 'Regional survey (its own source)', ...X.edgt_44.edgt_44.hellinger.map(range)]);
     table('structured-table', ['Population', 'Reference', ...T], body);
   } else if (sc) sc.hidden = true;
+
+  // populations generated end to end with the new stage or from the regional survey
+  const rc = document.getElementById('runscard');
+  if (DATA.runs && DATA.local && DATA.local.fidelity.A && DATA.local.fidelity.C) {
+    const R = DATA.runs, letters = ['S', 'F', 'G', 'T'].filter(k => R[k]), f3 = v => v.toFixed(3), short = T.map(t => t.replace(' city', ''));
+    const el = document.getElementById('runs'); el.replaceChildren();
+    const names = ['A · default, local', 'C · urban type', ...letters.map(k => k + ' · ' + R[k].label.replace(', regional survey', ', regional').replace(', national survey', ', national').replace('eqasim matching', 'matching'))];
+    heatGrid(el, {title: 'Against the national survey', sub: '· ENTD 2008', rows: names, cols: short, values: [DATA.fidelity.A, DATA.fidelity.C, ...letters.map(k => R[k].national)], max: 0.2, fmt: f3, labelW: 216, cellH: 30});
+    heatGrid(el, {title: 'Against the regional survey', sub: '· EDGT 2015', rows: names, cols: short, values: [DATA.local.fidelity.A, DATA.local.fidelity.C, ...letters.map(k => R[k].regional)], max: 0.2, fmt: f3, labelW: 216, cellH: 30});
+    const ln = document.getElementById('runs-lines'); ln.replaceChildren();
+    const reg = ['F', 'G', 'T'].filter(k => R[k]);
+    lineChart(ln, {title: 'Home-based tours per mobile person', ymin: 1.4, ymax: 1.8, yfmt: (v, d = 0) => v.toFixed(d ? 3 : 1),
+      series: [{key: 'loc', values: DATA.local.indicators.tours_per_mobile}, ...reg.map(k => ({key: k, values: R[k].tours}))]});
+    lineChart(ln, {title: 'Staying home', ymax: 0.16, yfmt: (v, d = 0) => pct(v, d),
+      series: [{key: 'loc', values: DATA.local.indicators.immobile_share}, ...reg.map(k => ({key: k, values: R[k].home}))]});
+    legend('runs-legend', ['loc', ...reg]);
+    const sg = (v, d, scale = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(scale * v).toFixed(d);
+    table('runs-table', ['Population', 'Measure', ...T, 'Rural minus central'], letters.flatMap(k => [
+      [k + ' · ' + R[k].label, 'Distance to the national survey', ...R[k].national.map(f3), ''],
+      [k + ' · ' + R[k].label, 'Distance to the regional survey', ...R[k].regional.map(f3), ''],
+      [k + ' · ' + R[k].label, 'Staying home', ...R[k].home.map(v => pct(v, 1)), sg(R[k].gaps.immobile_share, 1, 100) + ' points'],
+      [k + ' · ' + R[k].label, 'Tours per mobile person', ...R[k].tours.map(v => v.toFixed(3)), sg(R[k].gaps.tours_per_mobile, 3)]])
+      .concat([['Regional survey', 'Staying home', ...DATA.local.indicators.immobile_share.map(v => pct(v, 1)), ''],
+               ['Regional survey', 'Tours per mobile person', ...DATA.local.indicators.tours_per_mobile.map(v => v.toFixed(3)), '']]));
+  } else if (rc) rc.hidden = true;
 
   // gap between rural and central-city residents
   const gc = document.getElementById('gapcard');

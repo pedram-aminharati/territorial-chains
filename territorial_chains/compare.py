@@ -111,3 +111,32 @@ def contrast_retention(df_observed, df_generated, column, stratum,
             "retention": gen / obs if obs > 0 else np.nan,
         })
     return pd.DataFrame.from_records(records)
+
+
+def standardised_gap(df, value, stratum, a, b, cells, weight="weight"):
+    """Gap in a weighted mean between two strata, before and after equalising their composition.
+
+    The respondents of stratum ``a`` are reweighted so that they have the same
+    distribution over ``cells`` (a list of columns, for instance age class and
+    occupation) as the respondents of stratum ``b``. What remains of the gap
+    after that cannot be put down to the two strata being made of different
+    people, as far as those columns describe them.
+
+    Returns ``raw`` (mean of a minus mean of b), ``standardised`` (the same with
+    a reweighted) and ``coverage``, the share of b's weight that lies in cells
+    where a has respondents; the rest of b has no counterpart in a.
+    """
+    cells = list(cells)
+    fa, fb = df[df[stratum] == a], df[df[stratum] == b]
+    share_a = fa.groupby(cells, observed=True)[weight].sum() / fa[weight].sum()
+    share_b = fb.groupby(cells, observed=True)[weight].sum() / fb[weight].sum()
+    factor = (share_b / share_a).reindex(share_a.index).fillna(0.0).rename("factor").reset_index()
+    adjusted = fa[weight].to_numpy() * fa[cells].merge(factor, on=cells, how="left")["factor"].to_numpy()
+
+    mean = lambda values, weights: float(np.sum(np.asarray(values, dtype=float) * weights) / np.sum(weights))
+    mean_b = mean(fb[value], fb[weight].to_numpy())
+    return {
+        "raw": mean(fa[value], fa[weight].to_numpy()) - mean_b,
+        "standardised": mean(fa[value], adjusted) - mean_b,
+        "coverage": float(share_b.reindex(share_a.index).fillna(0.0).sum()),
+    }

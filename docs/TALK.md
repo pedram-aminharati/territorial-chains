@@ -21,13 +21,17 @@ Ten minutes, with the project page open. Each step names the section to show.
    in every seed; car kilometres move by a few percent by territory and cancel
    over the département.
 6. **Can a model do better?** (Generators). On the national survey, what counts
-   is whether the model sees territory, not which model it is.
+   is whether the model sees territory, not which model it is. Moved to the
+   regional survey, the generators that see territory get the gap in tours
+   right and rural staying home wrong, the same split as the populations.
 7. **What I would do next** in the postdoc: richer territorial descriptors than
    four urban types, references that are local where they exist, and a
    generator integrated as an eqasim stage. A first one exists
    (`eqasim_contrib/`): it draws the structure of the day and then matches a
-   respondent, so it fits the pipeline. It has been tried on existing
-   residents, not yet in a full run.
+   respondent, so it fits the pipeline. It has run in complete eqasim runs.
+   Show the last figure of the Generators section: fed with the regional
+   survey, eqasim's default matching loses the gap in tours between rural and
+   central-city residents, and the new stage keeps it.
 
 ## Questions to expect, with the honest answer
 
@@ -50,14 +54,24 @@ Ten minutes, with the project page open. Each step names the section to show.
   only, without times, so they cannot replace matching in the pipeline as they
   are. The structured-matching stage can, because it still ends with a real
   respondent.
-- **Does the structured matching beat eqasim?** Not against the regional
-  survey: it lies between the two eqasim variants. The national survey has 254
-  rural respondents in the département, and pooling cannot invent what they do
-  not show. With the regional survey as source it follows that survey, which is
-  the expected result and not a validation.
+- **Does the structured matching beat eqasim?** With the national survey as
+  source, not against the regional survey: it lies between the two eqasim
+  variants. The national survey has 254 rural respondents in the département,
+  and pooling cannot invent what they do not show. With the regional survey as
+  source it keeps the territorial gap in tours that default matching loses, and
+  so does eqasim's own urban type option. Those populations are judged against
+  their own source, with one seed each.
+- **Is the rural gap just a matter of who lives there?** Nationally no: it
+  stays at about 5 points with age, occupation and car ownership equalised. In
+  Loire-Atlantique the raw gap is nil and becomes 2 to 3 points once car
+  ownership is equalised, since almost every rural household has a car.
+- **Why do rural residents stay home more in your regional populations than in
+  the survey?** Mostly age. The census counts 20% of rural residents over 64
+  and the survey of 2015 counts 13%.
 - **What did you not have time to check?** Why about 4,800 agents never finish
   their day in the simulation (they explain the 3% of missing trips, but which
-  links or services hold them was not identified), the households without a
-  home commune, and populations generated from the regional survey itself.
+  links or services hold them was not identified), public transport supply and
+  accessibility as descriptors of territory, a peri-urban class, a second
+  département, and the simulation of the four latest populations.
 - **Your background is not transport.** Correct. Before this application I had
   not run eqasim; the page shows how I work in a new field.

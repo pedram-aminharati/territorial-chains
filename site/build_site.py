@@ -48,6 +48,14 @@ GENERATORS = [
 
 GAPS = ["immobile_share", "tours_per_mobile", "euclidean_km_per_mobile"]
 
+RUNS = [
+    # key, letter, survey used as source, short description
+    ("S_entd_structured",   "S", "entd",    "new stage, national survey"),
+    ("F_edgt44",            "F", "edgt_44", "eqasim matching, regional survey"),
+    ("G_edgt44_urban",      "G", "edgt_44", "eqasim matching, urban type, regional survey"),
+    ("T_edgt44_structured", "T", "edgt_44", "new stage, regional survey"),
+]
+
 
 def by_urban(frame, value, key="urban_type"):
     indexed = frame.set_index(key)[value]
@@ -144,7 +152,9 @@ def collect(results):
                 "rural_error": stat(key, "none", "hellinger"),
                 "all_error": stat(key, "all", "hellinger"),
                 "novel": stat(key, "all", "novel_share")[0],
+                "closed": stat(key, "all", "closed_day_generated")[0],
             } for key, name, family, aware in GENERATORS if (bench["method"] == key).any()],
+            "observed_closed": stat("floor", "all", "closed_day_observed")[0],
             "observed_rural_home": stat("floor", "none", "immobile_observed")[0],
             "floor_rural": stat("floor", "none", "hellinger")[0],
             "floor_all": stat("floor", "all", "hellinger")[0],
@@ -152,6 +162,36 @@ def collect(results):
         structures = pd.read_csv(os.path.join(results, "generators", "structures.csv"))
         learned = structures[structures["method"] == "bayesnet_learned"]["edges"]
         data["generators"]["territory_edges_found"] = int(learned.str.contains("urban_type").sum())
+
+    # --- the same generators judged in another territory (optional: scripts/benchmark_transfer.py)
+    transfer_path = os.path.join(results, "generators", "transfer.csv")
+    if os.path.exists(transfer_path):
+        transfer = pd.read_csv(transfer_path)
+        complete = transfer.groupby("repeat")["method"].nunique()
+        transfer = transfer[transfer["repeat"].isin(complete[complete == complete.max()].index)]
+
+        def moved(method, urban, column):
+            v = transfer[(transfer["method"] == method) & (transfer["urban_type"] == urban)][column]
+            return [float(v.mean()), float(v.min()), float(v.max())]
+
+        data["transfer"] = {
+            "repeats": int(transfer["repeat"].nunique()),
+            "methods": [{
+                "key": key, "name": name, "aware": aware,
+                "rural_error": moved(key, "none", "hellinger"),
+                "all_error": moved(key, "all", "hellinger"),
+                "rural_home": moved(key, "none", "immobile_generated")[0],
+                "tours_gap": moved(key, "none", "tours_generated")[0] - moved(key, "central_city", "tours_generated")[0],
+            } for key, name, family, aware in GENERATORS if (transfer["method"] == key).any()],
+            "observed_tours_gap": moved("matching_default", "none", "tours_observed")[0]
+                                  - moved("matching_default", "central_city", "tours_observed")[0],
+            "national": {"rural": moved("national_survey", "none", "hellinger")[0],
+                         "all": moved("national_survey", "all", "hellinger")[0],
+                         "rural_home": moved("national_survey", "none", "immobile_generated")[0]},
+            "floor_rural": moved("floor", "none", "hellinger")[0],
+            "floor_all": moved("floor", "all", "hellinger")[0],
+            "observed_rural_home": moved("matching_default", "none", "immobile_observed")[0],
+        }
 
     # --- MATSim runs (optional: present once evaluate_simulation.py has run on both variants)
     sims = {}
@@ -251,6 +291,69 @@ def collect(results):
             regional = {name: float(table.loc[name, "observed_gap"]) for name in GAPS}
     if generated:
         data["gaps"] = {"indicators": GAPS, "generated": generated, "observed": observed, "regional": regional}
+
+    # --- links with socio-demographics, commuting, groups, distance to the city (optional: scripts/territory_links.py)
+    links_dir = os.path.join(results, "links")
+    if os.path.exists(os.path.join(links_dir, "composition.csv")):
+        comp = pd.read_csv(os.path.join(links_dir, "composition.csv"))
+        commuting = pd.read_csv(os.path.join(links_dir, "commuting.csv")).set_index(["source", "urban_type"])
+        grp = pd.read_csv(os.path.join(links_dir, "groups.csv"))
+        bands = pd.read_csv(os.path.join(links_dir, "distance_bands.csv"))
+        names = {"National survey (ENTD 2008)": "obs", "Regional survey (EDGT 2015)": "loc"}
+        band_labels = list(bands["band"].drop_duplicates())
+        data["links"] = {
+            "composition": [
+                {"survey": r.survey, "indicator": r.indicator, "attributes": r.attributes, "mix": r.mix_of,
+                 "raw": [float(r.raw), float(r.raw_low), float(r.raw_high)],
+                 "std": [float(r.standardised), float(r.standardised_low), float(r.standardised_high)]}
+                for r in comp.itertuples()],
+            "commuting": {names.get(source, source): {
+                "median": [float(commuting.loc[(source, u), "median_km"]) for u in URBAN],
+                "share": [float(commuting.loc[(source, u), "commuter_share"]) for u in URBAN]}
+                for source in commuting.index.get_level_values(0).unique()},
+            "group_names": list(grp["group"].drop_duplicates()),
+            "groups": {reference: {variant: {residents: [float(v) for v in part["hellinger"]]
+                                             for residents, part in sub.groupby("residents", sort=False)}
+                                   for variant, sub in block.groupby("variant")}
+                       for reference, block in grp.groupby("reference")},
+            "bands": {"labels": band_labels, "sources": {names.get(source, source): {
+                "immobile": [float(v) for v in part["immobile_share"]],
+                "low": [None if pd.isna(v) else float(v) for v in part["immobile_low"]],
+                "high": [None if pd.isna(v) else float(v) for v in part["immobile_high"]],
+                "tours": [float(v) for v in part["tours_per_mobile"]],
+                "distance": [None if pd.isna(v) else float(v) for v in part["hellinger_to_regional"]],
+                "persons": [int(v) for v in part["persons"]]}
+                for source, part in bands.groupby("source", sort=False)}},
+        }
+
+    # --- populations generated with the new stage or from the regional survey (optional)
+    runs = {}
+    for key, letter, source, label in RUNS:
+        other = key + ("__vs_edgt_44" if source == "entd" else "__vs_entd")
+        national, regional = (key, other) if source == "entd" else (other, key)
+        if not all(os.path.exists(os.path.join(results, f, "fidelity.csv")) for f in (national, regional)):
+            continue
+        indicators = read(key, "indicators.csv")
+        gaps = read(key, "gaps.csv").set_index("indicator")["generated_gap"]
+        runs[letter] = {
+            "label": label, "source": source,
+            "national": by_urban(read(national, "fidelity.csv"), "distance"),
+            "regional": by_urban(read(regional, "fidelity.csv"), "distance"),
+            "home": by_urban(indicators[indicators["indicator"] == "immobile_share"], "generated"),
+            "tours": by_urban(indicators[indicators["indicator"] == "tours_per_mobile"], "generated"),
+            "gaps": {name: float(gaps[name]) for name in GAPS},
+        }
+    if runs:
+        data["runs"] = runs
+        age_path = os.path.join(results, "links", "regional_source_age.csv")
+        if os.path.exists(age_path):                 # scripts/regional_source_age.py
+            age = pd.read_csv(age_path).set_index("run")
+            letters = {key: letter for key, letter, source, label in RUNS}
+            data["runs_age"] = {
+                "gaps": {letters[run]: float(row["gap_survey_age_mix"]) for run, row in age.iterrows()},
+                "over_64_population": float(age["none_over_64_population"].mean()),
+                "over_64_survey": float(age["none_over_64_survey"].mean()),
+            }
 
     # --- structured matching tried on existing residents (optional: scripts/try_matching_stage.py)
     structured_path = os.path.join(results, "structured", "summary.csv")
@@ -358,13 +461,13 @@ def narrative(data):
         "km_A_central": "%.0f" % ind["A"]["euclidean_km_per_mobile"][0],
         "km_A_rural": "%.0f" % ind["A"]["euclidean_km_per_mobile"][3],
     }
+    words = {2: "two", 3: "three", 4: "four", 5: "five"}
     g = data.get("generators")
     if g:
         m = {x["key"]: x for x in g["methods"]}
         # The GAN is reported apart: it misses the level of staying home whatever it is given.
         blind = [x["rural_home"][0] for x in g["methods"] if not x["aware"] and not x["key"].startswith("gan")]
         aware = [x["rural_home"][0] for x in g["methods"] if x["aware"] and not x["key"].startswith("gan")]
-        words = {2: "two", 3: "three", 4: "four", 5: "five"}
         gan = {k: m.get("gan_" + k) for k in ("blind", "territory")}
         values.update({key: "" for key in ("gen_gan_blind", "gen_gan_aware", "gen_gan_rural", "gen_gan_all", "gen_gan_novel")})
         if gan["blind"] and gan["territory"]:
@@ -386,7 +489,74 @@ def narrative(data):
             "gen_vae_rural": "%.3f" % m["vae_territory"]["rural_error"][0],
             "gen_ar_rural": "%.3f" % m["autoregressive_territory"]["rural_error"][0],
             "gen_edges": str(g["territory_edges_found"]),
+            "gen_closed_obs": pct(g["observed_closed"], 1),
+            "gen_closed_low": pct(min(v["closed"] for k, v in m.items() if not k.startswith("gan")), 0),
+            "gen_closed_high": pct(max(v["closed"] for k, v in m.items() if not k.startswith("gan")), 0),
+            "gen_closed_gan": pct(m["gan_territory"]["closed"], 0) if "gan_territory" in m else "",
         })
+    tr_keys = ["tr_repeats", "tr_national_all", "tr_national_rural", "tr_floor_all", "tr_floor_rural",
+               "tr_match_all", "tr_match_rural", "tr_urban_all", "tr_urban_rural", "tr_blind_low", "tr_blind_high",
+               "tr_aware_low", "tr_aware_high", "tr_home_obs", "tr_home_blind", "tr_home_aware", "tr_home_national",
+               "tr_bn_all", "tr_tours_obs", "tr_tours_blind", "tr_tours_aware", "tr_tours_bn"]
+    values.update({key: "" for key in tr_keys})
+    t = data.get("transfer")
+    if t:
+        tm = {x["key"]: x for x in t["methods"]}
+        plain = [x for x in t["methods"] if not x["key"].startswith("gan")]
+        blind = [x for x in plain if not x["aware"]]
+        aware = [x for x in plain if x["aware"]]
+        values.update({
+            "tr_repeats": words.get(t["repeats"], str(t["repeats"])),
+            "tr_national_all": "%.3f" % t["national"]["all"], "tr_national_rural": "%.3f" % t["national"]["rural"],
+            "tr_floor_all": "%.3f" % t["floor_all"], "tr_floor_rural": "%.3f" % t["floor_rural"],
+            "tr_match_all": "%.3f" % tm["matching_default"]["all_error"][0],
+            "tr_match_rural": "%.3f" % tm["matching_default"]["rural_error"][0],
+            "tr_urban_all": "%.3f" % tm["matching_urban"]["all_error"][0],
+            "tr_urban_rural": "%.3f" % tm["matching_urban"]["rural_error"][0],
+            "tr_blind_low": "%.3f" % min(x["rural_error"][0] for x in blind),
+            "tr_blind_high": "%.3f" % max(x["rural_error"][0] for x in blind),
+            "tr_aware_low": "%.3f" % min(x["rural_error"][0] for x in aware),
+            "tr_aware_high": "%.3f" % max(x["rural_error"][0] for x in aware),
+            "tr_home_obs": pct(t["observed_rural_home"], 1),
+            "tr_home_blind": "%s to %s" % (pct(min(x["rural_home"] for x in blind), 1), pct(max(x["rural_home"] for x in blind), 1)),
+            "tr_home_aware": "%s to %s" % (pct(min(x["rural_home"] for x in aware), 1), pct(max(x["rural_home"] for x in aware), 1)),
+            "tr_home_national": pct(t["national"]["rural_home"], 1),
+            "tr_bn_all": "%.3f" % tm["bayesnet_territory"]["all_error"][0],
+        })
+        signed = lambda x: ("%+.2f" % x).replace("-", "\u2212")
+        # The Bayesian network is given an edge from territory to going out only, not to the number of tours.
+        tours = [x["tours_gap"] for x in aware if x["key"] != "bayesnet_territory"]
+        values.update({
+            "tr_tours_obs": signed(t["observed_tours_gap"]),
+            "tr_tours_blind": "%s to %s" % (signed(min(x["tours_gap"] for x in blind)), signed(max(x["tours_gap"] for x in blind))),
+            "tr_tours_aware": "%s to %s" % (signed(max(tours)), signed(min(tours))),
+            "tr_tours_bn": signed(tm["bayesnet_territory"]["tours_gap"]),
+        })
+    run_keys = ["run_S_nat", "run_S_reg", "run_T_reg", "run_F_reg", "run_G_reg", "run_F_tours", "run_G_tours",
+                "run_T_tours", "run_obs_tours", "run_F_home", "run_G_home", "run_T_home", "run_obs_home", "run_count",
+                "run_F_age", "run_G_age", "run_T_age", "run_old_population", "run_old_survey"]
+    values.update({key: "" for key in run_keys})
+    runs = data.get("runs")
+    if runs and data.get("gaps", {}).get("regional"):
+        span = lambda v: "%.3f to %.3f" % (min(v), max(v))
+        gap = lambda x: ("%+.3f" % x).replace("-", "\u2212")
+        points = lambda x: ("%+.1f" % (100 * x)).replace("-", "\u2212")
+        regional = data["gaps"]["regional"]
+        values.update({"run_count": words.get(len(runs), str(len(runs))).capitalize(),
+                       "run_obs_tours": gap(regional["tours_per_mobile"]),
+                       "run_obs_home": points(regional["immobile_share"])})
+        if "S" in runs:
+            values.update({"run_S_nat": span(runs["S"]["national"]), "run_S_reg": span(runs["S"]["regional"])})
+        for letter in ("F", "G", "T"):
+            if letter in runs:
+                values.update({"run_%s_reg" % letter: span(runs[letter]["regional"]),
+                               "run_%s_tours" % letter: gap(runs[letter]["gaps"]["tours_per_mobile"]),
+                               "run_%s_home" % letter: points(runs[letter]["gaps"]["immobile_share"])})
+        aged = data.get("runs_age")
+        if aged:
+            values.update({"run_%s_age" % letter: points(value) for letter, value in aged["gaps"].items()})
+            values.update({"run_old_population": pct(aged["over_64_population"], 0),
+                           "run_old_survey": pct(aged["over_64_survey"], 0)})
     sim = data.get("simulation")
     if sim:
         change = lambda column, i: sim["C"]["travel"][column][i] / sim["A"]["travel"][column][i] - 1.0
@@ -474,6 +644,41 @@ def narrative(data):
             "gap_home_C": points(gen["C"]["immobile_share"][0]),
             "gap_tours_nat": tours(obs["tours_per_mobile"]), "gap_tours_reg": tours(reg["tours_per_mobile"]),
             "gap_tours_A": tours(gen["A"]["tours_per_mobile"][0]), "gap_tours_C": tours(gen["C"]["tours_per_mobile"][0]),
+        })
+    lk = data.get("links")
+    link_keys = ["link_nat_raw", "link_nat_low", "link_nat_high", "link_reg_raw", "link_reg_plain", "link_reg_car_low",
+                 "link_reg_car_high", "band_far", "band_far_ci", "band_near_low", "band_near_high", "band_C_far",
+                 "com_reg_central", "com_reg_rural", "com_gap", "grp_work_A", "grp_work_B", "grp_work_C",
+                 "grp_other_low", "grp_other_high"]
+    values.update({key: "" for key in link_keys})
+    if lk:
+        points = lambda v: ("%+.1f" % (100 * v)).replace("-", "\u2212")
+        home = [r for r in lk["composition"] if r["indicator"] == "immobile_share"]
+        pick = lambda survey, attributes: [r["std"][0] for r in home if r["survey"] == survey and r["attributes"] == attributes]
+        national = pick("entd", "age and occupation") + pick("entd", "age, occupation and car")
+        car = pick("edgt_44", "age, occupation and car")
+        plain = pick("edgt_44", "age and occupation")
+        raw = lambda survey: next(r["raw"][0] for r in home if r["survey"] == survey)
+        b = lk["bands"]["sources"]
+        near = b["loc"]["immobile"][:-1]
+        c = lk["commuting"]
+        gaps = [abs(c[k]["median"][i] - c["loc"]["median"][i]) for k in ("A", "B", "C") if k in c for i in range(4)]
+        g = lk["groups"]["edgt_44"]
+        other = lk["group_names"].index("other")
+        work = lk["group_names"].index("in work")
+        values.update({
+            "link_nat_raw": points(raw("entd")), "link_nat_low": points(min(national)), "link_nat_high": points(max(national)),
+            "link_reg_raw": points(raw("edgt_44")), "link_reg_plain": points(sum(plain) / len(plain)),
+            "link_reg_car_low": points(min(car)), "link_reg_car_high": points(max(car)),
+            "band_far": pct(b["loc"]["immobile"][-1], 1),
+            "band_far_ci": "%s to %s" % (pct(b["loc"]["low"][-1], 1), pct(b["loc"]["high"][-1], 1)),
+            "band_near_low": pct(min(near), 1), "band_near_high": pct(max(near), 1),
+            "band_C_far": pct(b["C"]["immobile"][-1], 0) if "C" in b else "",
+            "com_reg_central": "%.1f" % c["loc"]["median"][0], "com_reg_rural": "%.1f" % c["loc"]["median"][3],
+            "com_gap": "%.0f" % (max(gaps) + 0.5),
+            "grp_work_A": "%.3f" % g["A"]["all"][work], "grp_work_B": "%.3f" % g["B"]["all"][work],
+            "grp_work_C": "%.3f" % g["C"]["all"][work],
+            "grp_other_low": "%.2f" % min(g[k]["all"][other] for k in g), "grp_other_high": "%.2f" % max(g[k]["all"][other] for k in g),
         })
     st = data.get("structured")
     st_keys = ["st_draws", "st_prior", "st_home_rural", "st_home_rural_C", "st_regional_low", "st_regional_high",

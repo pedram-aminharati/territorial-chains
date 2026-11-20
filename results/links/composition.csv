@@ -1,0 +1,17 @@
+survey,indicator,attributes,mix_of,respondents_rural,respondents_central,coverage,raw,raw_low,raw_high,standardised,standardised_low,standardised_high
+entd,immobile_share,age and occupation,central city,5293,4625,0.999243,0.046200,0.026195,0.063806,0.054536,0.034639,0.075654
+entd,immobile_share,age and occupation,rural,5293,4625,0.997719,0.046200,0.026195,0.063806,0.050920,0.030933,0.069390
+entd,immobile_share,"age, occupation and car",central city,5293,4625,0.978828,0.046200,0.026195,0.063806,0.053444,0.033614,0.091218
+entd,immobile_share,"age, occupation and car",rural,5293,4625,0.997669,0.046200,0.026195,0.063806,0.052982,0.029253,0.072037
+entd,tours_per_mobile,age and occupation,central city,4380,4106,0.999137,-0.111580,-0.165511,-0.046478,-0.151906,-0.203024,-0.099729
+entd,tours_per_mobile,age and occupation,rural,4380,4106,0.997279,-0.111580,-0.165511,-0.046478,-0.114884,-0.173872,-0.055382
+entd,tours_per_mobile,"age, occupation and car",central city,4380,4106,0.975623,-0.111580,-0.165511,-0.046478,-0.161169,-0.216501,-0.083224
+entd,tours_per_mobile,"age, occupation and car",rural,4380,4106,0.997219,-0.111580,-0.165511,-0.046478,-0.140120,-0.205605,-0.072808
+edgt_44,immobile_share,age and occupation,central city,3490,6278,0.999520,0.005501,-0.007032,0.018070,0.009070,-0.002946,0.022741
+edgt_44,immobile_share,age and occupation,rural,3490,6278,0.999712,0.005501,-0.007032,0.018070,0.009327,-0.002230,0.023555
+edgt_44,immobile_share,"age, occupation and car",central city,3490,6278,0.923246,0.005501,-0.007032,0.018070,0.030818,0.012548,0.047959
+edgt_44,immobile_share,"age, occupation and car",rural,3490,6278,0.999409,0.005501,-0.007032,0.018070,0.021546,0.011120,0.033356
+edgt_44,tours_per_mobile,age and occupation,central city,3132,5670,0.999474,-0.134139,-0.174540,-0.098581,-0.190196,-0.235791,-0.155058
+edgt_44,tours_per_mobile,age and occupation,rural,3132,5670,0.999571,-0.134139,-0.174540,-0.098581,-0.149730,-0.191938,-0.110661
+edgt_44,tours_per_mobile,"age, occupation and car",central city,3132,5670,0.922269,-0.134139,-0.174540,-0.098581,-0.140054,-0.212835,-0.102069
+edgt_44,tours_per_mobile,"age, occupation and car",rural,3132,5670,0.999348,-0.134139,-0.174540,-0.098581,-0.147370,-0.196046,-0.107422

@@ -6,9 +6,9 @@ been submitted yet.
 
 | Piece | What it does | How it was checked |
 |---|---|---|
-| `analysis/synthesis/chains_by_territory.py` | A new analysis stage. Compares the activity chains of the population with the survey, by urban type of the home commune. | Run by synpp with eqasim's real ENTD stages on two saved populations. Not yet run inside a complete pipeline run. |
-| `synthesis/population/matched_structured.py` | A matching stage that can replace eqasim's: it draws the structure of the day from a small network, then matches a respondent inside that structure. | Run by synpp with eqasim's real survey stages and matching function on the residents of a saved population, five draws per survey. Not yet run inside a complete pipeline run. |
-| `patches/edgt_44_urban_type.patch` | Lets `use_urban_type` work with `hts: edgt_44`, which v1.5.0 cannot do. | eqasim's patched EDGT stages run on the real survey files, and feed the matching stage above in its trial. No population has been generated with it yet. |
+| `analysis/synthesis/chains_by_territory.py` | A new analysis stage. Compares the activity chains of the population with the survey, by urban type of the home commune. | Run by synpp with eqasim's real ENTD stages on two saved populations, then inside the pipeline on variant C, where it gives the figures this repository computes outside it. |
+| `synthesis/population/matched_structured.py` | A matching stage that can replace eqasim's: it draws the structure of the day from a small network, then matches a respondent inside that structure. | Run by synpp with eqasim's real survey stages and matching function on the residents of a saved population, five draws per survey, then in two complete pipeline runs (S with the national survey, T with the regional one, 14 and 17 minutes at a 10% sample). |
+| `patches/edgt_44_urban_type.patch` | Lets `use_urban_type` work with `hts: edgt_44`, which v1.5.0 cannot do. | eqasim's patched EDGT stages run on the real survey files, and three populations were generated with the patch applied (F, G and T). |
 | `patches/java_version_check.patch` | Fixes the Java version check, which fails when the version does not have exactly three numbers. | Unit test with six version strings. |
 
 Tests are in `tests/test_eqasim_contrib.py`. The patch tests run when
@@ -126,9 +126,15 @@ Known limits. Only 13% of the respondents S attaches live in Loire-Atlantique
 département rarely hold 20 respondents; putting `departement_id` earlier in
 `matching_attributes` would trade attribute matches for local respondents. The
 parents of each table are fixed in the code, not learned. The stage runs in one
-process. Distances, modes and the simulation have not been looked at, since no
-population has been generated with it: `configs/make_configs.py` writes
-`S_entd_structured` and `T_edgt44_structured` for that.
+process.
+
+Two populations were then generated end to end with the stage,
+`S_entd_structured` and `T_edgt44_structured` (`scripts/run_remaining.sh`).
+They give the same distances as the trial. With the regional survey as source
+the stage reproduces the gap in home-based tours between rural and central-city
+residents (−0.124 against −0.134 in the survey), which eqasim's default
+matching fed with the same survey does not (−0.002). The tables are in
+`docs/RESULTS_STRUCTURED.md`. The populations were not simulated.
 
 ## Urban type for the regional survey
 
@@ -148,8 +154,11 @@ the survey who live in communes that belong to Maine-et-Loire today fall back
 to rural, as the EGT stage does for respondents outside its area. That is 0.8%
 of the 20,799 respondents, all of them in isolated cities.
 
-`configs/make_configs.py` writes a variant for it, `G_edgt44_urban`. It has not
-been generated.
+`configs/make_configs.py` writes a variant for it, `G_edgt44_urban`, which was
+generated on 20 Nov 2026. 92% of central-city residents, 85% of suburban ones
+and 96% of rural ones receive a respondent of their own urban type, and 45% in
+isolated cities, where the blind spot of the census side remains. The 4% of
+rural residents with another type received one of the 168 respondents above.
 
 ## Java version check
 

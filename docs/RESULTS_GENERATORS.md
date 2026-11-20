@@ -73,6 +73,75 @@ staying home with and without it (14.7% and 15.4% over all residents, against
   floor: the test samples are too small to separate them (isolated-city floor
   0.19).
 
+## Coherence of the generated chains
+
+Share of days that start and end at home, all residents, mean over the five
+splits. Held-out respondents report 94.7%.
+
+| Generator | Blind | Aware |
+|---|---|---|
+| Matching | 94.1% | 94.4% |
+| Bayesian network | 94.1% | 93.9% |
+| Transformer | 94.2% | 93.8% |
+| Autoencoder | 93.2% | 93.2% |
+| GAN | 91.1% | 89.5% |
+
+Matching and the Bayesian network reuse reported chains, so they are coherent
+by construction. The transformer and the autoencoder stay within 1.5 points of
+the survey although 12% to 13% of their chains were never reported. The GAN
+loses 4 to 5 points. This is the only structural check made here; times and
+durations are not generated, so their consistency cannot be tested.
+
+## Moved to another territory
+
+Run on 20 Nov 2026 with `scripts/benchmark_transfer.py`. Every generator is
+trained on all 17,997 respondents of the national survey and proposes a chain
+for each of the 20,799 respondents of the regional survey (EDGT
+Loire-Atlantique 2015) from that person's attributes. The proposals are
+compared with what the regional respondents reported. Three trainings, mean
+and range. `National survey as it is` takes the national respondents of the
+same urban type without any model. `Floor` compares one half of the regional
+survey with the other.
+
+| Generator | Rural | All residents | Rural staying home |
+|---|---|---|---|
+| Floor | 0.067 | 0.029 | 9.4% (observed) |
+| National survey as it is | 0.162 | 0.127 | 16.8% |
+| Matching, default | 0.128 [0.123, 0.133] | 0.093 | 8.5% |
+| Matching, urban type first | 0.147 [0.145, 0.148] | 0.110 | 15.3% |
+| Bayesian network, learned graph | 0.134 [0.124, 0.147] | 0.125 | 11.0% |
+| Bayesian network, territory edge | 0.142 [0.135, 0.148] | 0.123 | 14.8% |
+| Transformer, without territory | 0.125 [0.120, 0.128] | 0.110 | 10.7% |
+| Transformer, with territory | 0.137 [0.127, 0.148] | 0.121 | 14.2% |
+| Autoencoder, without territory | 0.126 [0.119, 0.132] | 0.116 | 11.3% |
+| Autoencoder, with territory | 0.145 [0.139, 0.149] | 0.123 | 14.5% |
+| GAN, without territory | 0.209 [0.189, 0.225] | 0.211 | 14.9% |
+| GAN, with territory | 0.220 [0.211, 0.226] | 0.202 | 16.3% |
+
+- No generator trained on the national survey comes near the floor. The two
+  surveys are 0.127 apart for all residents, and the best generator is at
+  0.093.
+- Every model except the GAN is closer to the regional survey than the national
+  respondents taken as they are, because it gives regional respondents days
+  that fit their attributes. eqasim's default matching gains the most.
+- For rural residents the order of the national test turns over. The versions
+  that do not see territory are at 0.125 to 0.134 and the versions that see it
+  at 0.137 to 0.147. Ranges overlap for the Bayesian network and the
+  transformer, so the difference is small, but it has the same sign in the four
+  families.
+- The reason is staying home. Regional rural respondents stay home 9.4% of the
+  time. The versions that see territory give them 14% to 15%, which is what
+  they learned from rural respondents elsewhere in France.
+- On home-based tours it is the other way round. The regional gap between rural
+  and central-city respondents is −0.13 tours per mobile person. The versions
+  that do not see territory give +0.02 to +0.07 and the versions that see it
+  −0.09 to −0.11. The Bayesian network is the exception (+0.03), since its
+  territory edge points to going out only.
+
+So what a generator learns about territory in the national survey transfers to
+Loire-Atlantique for tours and not for staying home. This is the result of
+`RESULTS_LOCAL.md`, found again without any population or census in between.
+
 ## Structure search does not find territory
 
 Hill climbing on BIC, with chain variables barred from being parents of person
@@ -96,7 +165,8 @@ and a regional effect at once, where matching runs out of donors.
 
 ## Limits
 
-- One survey (ENTD 2008), national hold-out, not a Loire-Atlantique population.
+- The hold-out test uses one survey (ENTD 2008). The transfer test has one
+  target territory and three trainings.
 - Small models and no tuning; the transformer, autoencoder and GAN results are
   lower bounds on what those families can do. The GAN in particular is a plain
   fully connected one and decodes the most likely activity at each position.
