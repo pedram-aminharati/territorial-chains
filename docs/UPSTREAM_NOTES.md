@@ -46,12 +46,20 @@ itself, so the 14.0% is this study's application of its rule.
 variants with national donors, in every seed (`iris_id`, `commune_id`,
 `departement_id` all missing in `households`). Cause not investigated.
 
-**6. About 3% of the population's trips are missing from `eqasim_trips`.**
-In both simulated variants, 4% of persons have fewer simulated trips than
-planned. Their simulated trips are always the first ones of the day, three
-quarters are by car, and 1,646 persons have none. This looks like agents removed
-during the simulation, but it was not confirmed: the stuck-analysis file written
-by the simulation would settle it.
+**6. About 3% of the population's trips are missing from `eqasim_trips`, because some agents never finish their day.**
+In both simulated variants, 3% of persons have fewer simulated trips than
+planned (5,089 in A, 4,819 in C). Their recorded trips are always the first ones
+of the day, three quarters are by car, and about 1,650 persons have none. The
+simulation log explains most of it: when the last iteration ends, at 30:00, QSim
+reports 4,830 agents in A and 4,592 in C that have not finished their plan, and
+it removed none during the run (`lost=0`). That is 95% of the persons with
+missing trips in both variants. Their last recorded trip starts around noon
+(median 12.1 h, against 17.8 h for everyone else), so these agents are held up
+for the rest of the day, not cut off at the end. Whether they sit in a blocked
+queue or wait for a service that never comes was not identified; it needs the
+events file, which is not kept. The count per iteration falls from 9,687 to
+about 4,700 in A and stays there, so more iterations would not remove it.
+Tables: `results/<variant>_sim/sim_unfinished.csv`.
 
 ## Read in the code, not tested
 
@@ -74,6 +82,11 @@ what was not in its README. None has been submitted.
 - `analysis.synthesis.chains_by_territory`, a chain analysis by urban type next
   to the existing one by age and sex. Run by synpp with eqasim's ENTD stages on
   two saved populations, it reproduces this repository's own scoring.
+- `synthesis.population.matched_structured`, a matching stage that draws the
+  structure of the day first and takes the urban type from the home commune,
+  which removes the blind spot of note 2. It replaces
+  `synthesis.population.matched` through synpp's aliases. Tried on the residents
+  of a saved population (`docs/RESULTS_STRUCTURED.md`).
 - A patch that keeps the home zone of EDGT Loire-Atlantique respondents and
   derives their urban type, so that `use_urban_type` can be combined with
   `hts: edgt_44` (note 2 still applies to the census side).

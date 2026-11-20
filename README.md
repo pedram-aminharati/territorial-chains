@@ -5,8 +5,12 @@ rural day, and against which survey should that be judged? This repository
 measures it for the open-source [eqasim](https://github.com/eqasim-org/eqasim-france)
 pipeline (v1.5.0) on Loire-Atlantique (Nantes and its hinterland).
 
-**Project page with all figures:** `docs/index.html`, served by GitHub Pages and
-rebuilt from the result tables with `python site/build_site.py`.
+**Project page with all figures:** <https://pedram-aminharati.github.io/territorial-chains/>
+(`docs/index.html`, rebuilt from the result tables with `python site/build_site.py`).
+
+**Four-page technical note:** `docs/TECHNICAL_NOTE.pdf` (source `docs/TECHNICAL_NOTE.md`).
+
+[![tests](https://github.com/pedram-aminharati/territorial-chains/actions/workflows/tests.yml/badge.svg)](https://github.com/pedram-aminharati/territorial-chains/actions/workflows/tests.yml)
 
 ## What was done
 
@@ -15,13 +19,14 @@ rebuilt from the result tables with `python site/build_site.py`.
 | Indicator library for activity chains, weighted survey statistics, fidelity and contrast measures | `territorial_chains/`, `tests/` |
 | ENTD 2008 and EMP 2019 analysed by urban type, through eqasim's own cleaning stages | `docs/RESULTS_SURVEYS.md` |
 | Five eqasim populations for Loire-Atlantique (10% sample) scored by territory | `docs/RESULTS_PIPELINE.md` |
-| Bayesian-network, transformer and variational-autoencoder generators against matching, on held-out respondents | `docs/RESULTS_GENERATORS.md` |
+| Bayesian-network, transformer, variational-autoencoder and GAN generators against matching, on held-out respondents | `docs/RESULTS_GENERATORS.md` |
 | Two populations simulated with MATSim (OpenStreetMap network, six GTFS timetables) | `docs/SIMULATION.md` |
 | Repeats over five random seeds, three of them simulated | `docs/SEEDS.md` |
 | The regional survey (EDGT Loire-Atlantique 2015) as a second reference | `docs/RESULTS_LOCAL.md` |
 | Map by intercommunalité and commune, matching explorer | project page |
 | What was found in eqasim on the way | `docs/UPSTREAM_NOTES.md` |
-| The territory analysis as an eqasim stage, and two patches for eqasim-france | `eqasim_contrib/` |
+| A matching stage that can replace eqasim's, tried on existing residents | `docs/RESULTS_STRUCTURED.md` |
+| That stage, the territory analysis as an eqasim stage, and two patches for eqasim-france | `eqasim_contrib/` |
 
 ## What was found
 
@@ -49,8 +54,17 @@ rebuilt from the result tables with `python site/build_site.py`.
 5. **A generator sees territory or it does not.** On the national survey,
    matching, a Bayesian network, a transformer and a variational autoencoder
    reproduce the rural pattern only when territory is among their inputs; no
-   model is clearly better than matching with the urban type on that test.
-6. **EMP 2019 is read with the wrong weight for immobility.** Read with person
+   model is clearly better than matching with the urban type on that test, and
+   a plain GAN is far behind all of them.
+6. **A generator can sit inside the pipeline, and pooling only goes so far.**
+   A matching stage that first draws the structure of the day, with tables
+   pooled between local and national respondents, is as close to the national
+   survey as the urban-type option and lies between the two eqasim variants
+   against the regional survey. With the 1,798 respondents the national survey
+   has in the département, pooling does not recover what the regional survey
+   shows; fed with the regional survey, the same stage follows it by territory.
+   The stage has been tried on existing residents, not yet in a full run.
+7. **EMP 2019 is read with the wrong weight for immobility.** Read with person
    weights, as the pipeline does, 2.6% of people stay home on a weekday; with
    the survey's day weights, 14.0%.
 
@@ -61,7 +75,7 @@ limits are listed on the project page.
 
 ```bash
 pip install -e ".[dev]"
-pytest                                           # 46 tests
+pytest                                           # 51 tests
 
 bash scripts/setup_wsl.sh                        # eqasim-france v1.5.0 and its environment
 bash scripts/download_data.sh                    # open data: INSEE, IGN, data.gouv.fr, SDES
@@ -81,15 +95,18 @@ python scripts/evaluate_population.py output/C_entd_urban entd data/urban_type/U
 python scripts/export_page_data.py output data/urban_type/UU2020_au_01-01-2026.zip data/iris_2024/CONTOURS-IRIS_3-0__GPKG_LAMB93_FXX_2024-01-01.7z
 python site/build_site.py
 
-bash scripts/install_eqasim_contrib.sh           # copies the analysis stage into ~/eqasim-france
+bash scripts/install_eqasim_contrib.sh           # copies the two stages into ~/eqasim-france
 bash scripts/run_territory_stage.sh C_entd_urban # the same scoring, run inside eqasim
+python scripts/try_matching_stage.py ~/eqasim-france data output/A_entd_local data/urban_type/UU2020_au_01-01-2026.zip results
+bash scripts/run_remaining.sh                    # the populations not generated yet (S, T, F, G), in one go
 ```
 
 Which environment for what: the library and its tests need only numpy and
 pandas. The scoring scripts read parquet tables and Excel workbooks
 (`pip install -e ".[analysis]"`), or run as they are inside the eqasim-france
-environment. `survey_contrasts.py`, `regional_reference.py` and the matching
-generator import eqasim itself, so they need that environment. The generators
+environment. `survey_contrasts.py`, `regional_reference.py`,
+`try_matching_stage.py` and the matching generator import eqasim itself, so
+they need that environment. The generators
 need `".[models]"`. The pipeline and simulation steps need what
 `docs/SETUP_WSL.md` and `docs/SIMULATION.md` list (uv, a Java 25 JDK, Maven).
 
@@ -102,10 +119,10 @@ behind finding 1 in isolation.
 ```
 territorial_chains/   chains.py (chains, indicators)  weighted.py (survey statistics)
                       compare.py (fidelity, contrast retention)
-                      generators.py (matching, Bayesian network, transformer, variational autoencoder)
+                      generators.py (matching, Bayesian network, transformer, variational autoencoder, GAN)
                       simulation.py (mode shares and travel per resident from MATSim trips)
 tests/                pytest suite
-eqasim_contrib/       an analysis stage and two patches written for eqasim-france, with their own README
+eqasim_contrib/       two stages and two patches written for eqasim-france, with their own README
 configs/              make_configs.py: eqasim configs for departement 44 (populations, simulations, seeds)
 scripts/              setup, download, run and scoring scripts (see "Run it")
 reference/            intercommunalité of each commune; communes merged since 2015

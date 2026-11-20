@@ -1,6 +1,6 @@
 # input data and pipeline outputs stay local (several GB, fetched by scripts/download_data.sh)
-data/
-output/
+/data/
+/output/
 # individual-level survey tables derived by the analysis
 results/_cache/
 results/*.parquet

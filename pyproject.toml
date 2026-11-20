@@ -23,7 +23,7 @@ dev = ["pytest", "ruff", "synpp"]     # synpp runs the eqasim stage in its test
 # zstd-compressed MATSim tables, IGN contours. They also run inside the eqasim-france
 # environment, which already has pandas, geopandas, pyarrow and synpp.
 analysis = ["pyarrow", "geopandas", "python-calamine", "zstandard", "py7zr"]
-models = ["pgmpy", "torch"]          # Bayesian network, transformer and variational autoencoder
+models = ["pgmpy", "torch"]          # Bayesian network, transformer, variational autoencoder, GAN
 
 [tool.setuptools]
 packages = ["territorial_chains"]

@@ -73,3 +73,29 @@ def test_convergence_long_form():
     assert list(long.columns) == ["iteration", "mode", "share"]
     assert list(long[long["iteration"] == 1]["mode"]) == ["car", "pt", "walk"]
     assert long.groupby("iteration")["share"].sum().to_numpy() == pytest.approx(1.0)
+
+
+def test_unfinished_agents_reads_the_end_of_each_iteration():
+    from territorial_chains import unfinished_agents
+    log = """
+    INFO QSim:551 SIMULATION (NEW QSim) AT 29:00:00 : #active agents=40 lost=0 simT=104400.0s realT=1s; (s/r): 8
+    INFO QSim:551 SIMULATION (NEW QSim) AT 30:00:00 : #active agents=31 lost=2 simT=108000.0s realT=1s; (s/r): 8
+    INFO Controler:1 ### ITERATION 0 ENDS
+    INFO QSim:551 SIMULATION (NEW QSim) AT 30:00:00 : #active agents=12 lost=0 simT=108000.0s realT=1s; (s/r): 8
+    INFO Controler:1 ### ITERATION 1 ENDS
+    """
+    table = unfinished_agents(log)
+    assert table["iteration"].tolist() == [0, 1]
+    assert table["active_at_end"].tolist() == [31, 12]
+    assert table["lost"].tolist() == [2, 0]
+    assert table["end_hour"].tolist() == [30.0, 30.0]
+
+
+def test_missing_trips_counts_persons_whose_day_stops_early():
+    from territorial_chains import missing_trips
+    planned = pd.Series({1: 2, 2: 3, 3: 2, 4: 0})
+    trips = pd.DataFrame({"person_id": [1, 1, 2], "departure_time": [8 * 3600, 17 * 3600, 9 * 3600]})
+    row = missing_trips(planned, trips).iloc[0]
+    assert row["planned_trips"] == 7 and row["simulated_trips"] == 3 and row["missing_trips"] == 4
+    assert row["persons_with_missing_trips"] == 2 and row["persons_without_any_trip"] == 1
+    assert row["last_departure_hour_incomplete"] == 9.0 and row["last_departure_hour_complete"] == 17.0

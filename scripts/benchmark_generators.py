@@ -12,8 +12,8 @@ urban type. Repeating over splits gives a mean and a range, the way Hörl and
 Balac (2021) report variation over realisations.
 
 The methods are eqasim's statistical matching, a Bayesian network, a causal
-transformer and a conditional variational autoencoder, each with and without the
-home territory among its inputs.
+transformer, a conditional variational autoencoder and a conditional Wasserstein
+GAN, each with and without the home territory among its inputs.
 
 ``floor`` is not a generator: it is the distance between the training and test
 respondents of the same urban type, i.e. what sampling alone produces.
@@ -29,7 +29,7 @@ import pandas as pd
 
 from territorial_chains import add_indicators, weighted_share, weighted_mean, hellinger
 from territorial_chains.generators import (MatchingGenerator, BayesNetGenerator, AutoregressiveGenerator, VAEGenerator,
-                                           ATTRIBUTES)
+                                           GANGenerator, ATTRIBUTES)
 
 URBAN = ["central_city", "suburb", "isolated_city", "none"]
 DEFAULT = ["sex", "any_cars", "age_class", "socioprofessional_class", "departement_id"]
@@ -47,6 +47,8 @@ def methods(eqasim_path, seed):
         "autoregressive_territory": lambda: AutoregressiveGenerator(attributes=ATTRIBUTES, seed=seed),
         "vae_blind": lambda: VAEGenerator(attributes=NO_TERRITORY, seed=seed),
         "vae_territory": lambda: VAEGenerator(attributes=ATTRIBUTES, seed=seed),
+        "gan_blind": lambda: GANGenerator(attributes=NO_TERRITORY, seed=seed),
+        "gan_territory": lambda: GANGenerator(attributes=ATTRIBUTES, seed=seed),
     }
 
 
@@ -86,7 +88,20 @@ def main(eqasim_path, results_dir="results", splits=5):
     data["sex"] = data["sex"].astype(str)
     records, structures = [], []
 
+    # A run that was interrupted continues after the last split it completed. A split counts
+    # as complete only if it holds every method of the current list.
+    expected, done = {"floor"} | set(methods(eqasim_path, 0)), set()
+    if os.path.exists(os.path.join(out, "benchmark.csv")):
+        earlier = pd.read_csv(os.path.join(out, "benchmark.csv"))
+        done = {split for split, group in earlier.groupby("split") if set(group["method"]) == expected}
+        records = earlier[earlier["split"].isin(done)].to_dict("records")
+        kept = pd.read_csv(os.path.join(out, "structures.csv"))
+        structures = kept[kept["split"].isin(done)].to_dict("records")
+
     for split in range(int(splits)):
+        if split in done:
+            print("split %d  already complete" % split, flush=True)
+            continue
         rng = np.random.default_rng(1000 + split)
         is_test = np.zeros(len(data), dtype=bool)
         for urban in URBAN:                                   # stratified by territory

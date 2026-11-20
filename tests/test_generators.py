@@ -75,6 +75,19 @@ def test_vae_learns_territory_only_when_it_sees_it():
     assert seeing.validation_kl >= 0.0
 
 
+def test_gan_learns_territory_only_when_it_sees_it():
+    pytest.importorskip("torch")
+    from territorial_chains.generators import GANGenerator
+    train, target = toy_survey(seed=1), toy_survey(seed=2)
+    rng = np.random.default_rng(0)
+    seeing = GANGenerator(attributes=ATTRIBUTES, steps=300, hidden=128, d_model=32).fit(train)
+    blind = GANGenerator(attributes=[a for a in ATTRIBUTES if a != "urban_type"], steps=300, hidden=128, d_model=32).fit(train)
+    chains = seeing.sample(target, rng)
+    assert len(chains) == len(target) and all(c and set(c) <= set("hweslo") for c in chains)
+    assert stay_home_gap(target, chains) > 0.2
+    assert abs(stay_home_gap(target, blind.sample(target, rng))) < 0.1
+
+
 @pytest.mark.skipif("EQASIM_PATH" not in os.environ, reason="needs an eqasim-france checkout")
 def test_matching_wraps_eqasim():
     from territorial_chains.generators import MatchingGenerator

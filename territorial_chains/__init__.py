@@ -6,7 +6,10 @@ from .compare import (
     distribution, hellinger, jensen_shannon, stratified_fidelity,
     contrast_matrix, contrast_retention,
 )
-from .simulation import read_table, attach_home, mode_shares, travel_per_resident, convergence
+from .simulation import (
+    read_table, attach_home, mode_shares, travel_per_resident, convergence,
+    unfinished_agents, missing_trips,
+)
 
 __version__ = "0.1.0"
 
@@ -16,4 +19,5 @@ __all__ = [
     "distribution", "hellinger", "jensen_shannon", "stratified_fidelity",
     "contrast_matrix", "contrast_retention",
     "read_table", "attach_home", "mode_shares", "travel_per_resident", "convergence",
+    "unfinished_agents", "missing_trips",
 ]

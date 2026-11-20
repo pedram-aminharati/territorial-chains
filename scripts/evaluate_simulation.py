@@ -18,6 +18,9 @@ Outputs, in ``results/<run name>/``
 sim_modes.csv        share of trips and of distance by mode, per home territory
 sim_travel.csv       trips, km, car km and minutes per resident, per home territory
 sim_convergence.csv  mode shares by iteration (the simulation settling down)
+sim_unfinished.csv   planned against simulated trips, and the agents that had not finished
+                     their day when the last iteration ended (needs ``*_activities.parquet``
+                     and ``simulation/simulation.log``)
 
 A caution that belongs with every number here: eqasim's mode-choice model is
 calibrated for Île-de-France. The levels are not a forecast for
@@ -31,7 +34,9 @@ import sys
 
 import pandas as pd
 
-from territorial_chains import read_table, attach_home, mode_shares, travel_per_resident, convergence
+from territorial_chains import (
+    read_table, attach_home, mode_shares, travel_per_resident, convergence, unfinished_agents, missing_trips,
+)
 
 from evaluate_population import load_urban_types, URBAN_ORDER, _one
 
@@ -87,6 +92,19 @@ def main(run_dir, urban_type_zip, results_dir="results"):
     stats = glob.glob(os.path.join(run_dir, "simulation", "modestats.csv*"))
     if stats:
         tables["sim_convergence"] = convergence(read_table(stats[0]))
+
+    # Trips that were planned and never recorded, set against the agents still under way at the end
+    activities, log = _one(run_dir, "activities.parquet"), os.path.join(run_dir, "simulation", "simulation.log")
+    if activities and os.path.exists(log):
+        planned = pd.read_parquet(activities, columns=["person_id"]).groupby("person_id").size() - 1
+        table = missing_trips(planned, trips)
+        with open(log, errors="replace") as f:
+            ends = unfinished_agents(f.read())
+        if len(ends):
+            final = ends.iloc[-1]
+            table["iterations"], table["end_hour"] = len(ends), final["end_hour"]
+            table["active_at_end"], table["lost"] = int(final["active_at_end"]), int(final["lost"])
+        tables["sim_unfinished"] = table
 
     for name, table in tables.items():
         table.to_csv(os.path.join(out, "%s.csv" % name), index=False)

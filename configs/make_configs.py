@@ -24,6 +24,17 @@ VARIANTS = {
     "G_edgt44_urban":  ("edgt_44", True,  True),
 }
 
+# Variants generated with the structured-matching stage of eqasim_contrib/ in place of eqasim's
+# matching (scripts/install_eqasim_contrib.sh copies it). The stage takes the urban type from
+# the home commune itself, so use_urban_type stays off.
+#   S: national survey, tables pooled between Loire-Atlantique and national respondents
+#   T: regional survey (needs the edgt_44_urban_type patch, for the urban type of respondents)
+STRUCTURED = {
+    "S_entd_structured":   ("entd",    False),
+    "T_edgt44_structured": ("edgt_44", True),
+}
+STRUCTURED_STAGE = "synthesis.population.matched_structured"
+
 # The analysis stage of eqasim_contrib/, run inside eqasim on a variant's population.
 TERRITORY_STAGE = "analysis.synthesis.chains_by_territory"
 
@@ -116,6 +127,18 @@ def main(project, sampling_rate=0.1):
         config["config"].setdefault("urban_type_path", URBAN_TYPE_FILE)
         write(out, project, name + "_territory", config, quiet=True)
     print("wrote %d configs for the territory analysis stage (<variant>_territory.yml)" % len(VARIANTS))
+
+    for name, (hts, filter_hts) in STRUCTURED.items():
+        config = build(project, name, hts, filter_hts, False, sampling_rate)
+        config["aliases"] = {"synthesis.population.matched": STRUCTURED_STAGE}
+        config["config"]["urban_type_path"] = URBAN_TYPE_FILE
+        config["config"]["structure_prior_strength"] = "auto"
+        if hts == "edgt_44":                 # the patched survey stage reads the respondents' home zone
+            config["config"]["use_urban_type"] = True
+            found = sorted((project / "data" / "edgt_44_2015").rglob("07_denomination_perimetres_EDGT44*.xls"))
+            if found:
+                config["config"]["edgt_44_zones_path"] = found[0].relative_to(project / "data").as_posix()
+        write(out, project, name, config)
 
     for name in SIMULATED:
         hts, filter_hts, urban_type = VARIANTS[name]

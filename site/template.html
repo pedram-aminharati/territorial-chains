@@ -496,10 +496,11 @@
 
 <section id="generators">
   <h2>Can a generative model do better than matching?</h2>
-  <p class="sectionlead">Four families were trained on the same survey respondents and asked to propose a day for
+  <p class="sectionlead">Five families were trained on the same survey respondents and asked to propose a day for
   respondents they had never seen, from their attributes alone: eqasim's statistical matching, a Bayesian network,
-  a small transformer that writes the chain one activity at a time, and a variational autoencoder that first draws
-  a summary of the whole day and then writes it. Each family was run with and without the home territory. The test was repeated over {{gen_splits}} random splits; dots are means and bars the range.</p>
+  a small transformer that writes the chain one activity at a time, a variational autoencoder that first draws
+  a summary of the whole day and then writes it, and a GAN that writes the whole chain at once. Each family was
+  run with and without the home territory. The test was repeated over {{gen_splits}} random splits; dots are means and bars the range.</p>
 
   <figure class="card">
     <div class="figtitle">Rural residents staying home: what each generator produces</div>
@@ -507,8 +508,10 @@
     <div class="chart" id="genhome"></div>
     <div class="legend" id="gen-legend"></div>
     <figcaption>What decides the result is whether the model sees territory, not which model it is. The
-    {{gen_blind_count}} territory-blind generators all land near {{gen_blind_rural}} against {{gen_obs_rural}}
-    observed; the territory-aware ones give {{gen_aware_low}} to {{gen_aware_high}}.</figcaption>
+    territory-blind versions of the first four families all land near {{gen_blind_rural}}
+    against {{gen_obs_rural}} observed; their territory-aware versions give {{gen_aware_low}} to
+    {{gen_aware_high}}. The GAN also responds to territory ({{gen_gan_blind}} without it, {{gen_gan_aware}} with
+    it) but overstates staying home in both versions.</figcaption>
     <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="genhome-table"></div></details>
   </figure>
 
@@ -520,13 +523,36 @@
     <figcaption>No model is clearly better than matching with the urban type on this test. For rural residents the
     Bayesian network with a territory edge and the autoencoder with territory are level with it
     ({{gen_bn_rural}} and {{gen_vae_rural}} against {{gen_match_rural}}, with overlapping ranges) and the
-    transformer is behind ({{gen_ar_rural}}). The two neural models are the only ones that write chains no
-    respondent reported ({{gen_novel}} and {{gen_vae_novel}} of their output). Structure search on the data never linked territory to the chain
+    transformer is behind ({{gen_ar_rural}}). The GAN is far behind every other model ({{gen_gan_rural}} for rural
+    residents, {{gen_gan_all}} for all); it was given a fixed number of training steps and no tuning. The neural
+    models are the only ones that write chains no respondent reported ({{gen_novel}}, {{gen_vae_novel}} and
+    {{gen_gan_novel}} of their output). Structure search on the data never linked territory to the chain
     ({{gen_edges}} of {{gen_splits}} splits): the edge had to be imposed, which a tabular network makes costly and a
     neural model makes cheap. This benchmark is national: it asks whether a
     generator can reproduce the national survey's pattern. Whether that pattern should be imposed on one département
     is the question of the section on the regional survey.</figcaption>
     <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="generror-table"></div></details>
+  </figure>
+
+  <figure class="card" id="structuredcard">
+    <div class="figtitle">A generator that fits inside the pipeline</div>
+    <div class="figsub">The models above write the order of activities only, so they cannot replace matching in
+    eqasim. This one can: it draws the structure of the day from a small network, then matches a respondent who
+    reported that structure. Tried on the residents of variant A, mean of {{st_draws}} draws. Hellinger distance
+    to each survey; darker is worse.</div>
+    <div class="chart panels c2" id="structured"></div>
+    <figcaption>S pools the respondents of Loire-Atlantique with the national ones: where the département has
+    enough respondents their behaviour prevails, elsewhere the national pattern for the same urban type is used.
+    The weight of the national pattern is chosen by cross-validation on the local respondents ({{st_prior}}
+    pseudo-respondents, depending on the draw). Against the national survey S is about as close as C. Against the
+    regional survey, which it never sees, it lies between A and C in every territory: closer than C, not as close
+    as A. The national survey has only {{e44_rural_n}} rural respondents in the département, split here over eight
+    occupation classes, so the pooled tables stay close to the national pattern: {{st_home_rural}} of rural
+    residents stay home under S, against {{st_home_rural_C}} under C and {{loc_home_rural}} in the regional
+    survey. Fed with the regional survey instead, the same stage reproduces
+    that survey by territory ({{st_regional_low}} to {{st_regional_high}}), which shows that it works with a local
+    source, not that it is right. No full pipeline run has been made with this stage yet.</figcaption>
+    <details class="tableview"><summary>Table view</summary><div class="tablescroll" id="structured-table"></div></details>
   </figure>
 </section>
 
@@ -593,14 +619,17 @@ bash scripts/run_seeds.sh                     # A and C again with four other se
 python scripts/summarise_seeds.py results
 python scripts/evaluate_simulation.py output/C_entd_urban_sim data/urban_type/UU2020_au_01-01-2026.zip results
 python scripts/export_page_data.py output data/urban_type/UU2020_au_01-01-2026.zip data/iris_2024/CONTOURS-IRIS_3-0__GPKG_LAMB93_FXX_2024-01-01.7z
+python scripts/try_matching_stage.py ~/eqasim-france data output/A_entd_local data/urban_type/UU2020_au_01-01-2026.zip results
 python site/build_site.py                     # rebuilds this page from results/
-pytest                                        # 46 tests</code></pre>
+pytest                                        # 51 tests</code></pre>
 
+  <div class="prose"><p>A four-page technical note summarises the study and its limits:
+  <a href="TECHNICAL_NOTE.pdf">TECHNICAL_NOTE.pdf</a>.</p></div>
   <h3>How it builds on published work</h3>
   <div class="prose"><ul>
     <li><b>Hörl and Balac (2021)</b> describe the matching and validate chains by ranking the most frequent ones against the survey; the top-chain figure here does the same, by territory. Their paper also notes that the census gives residence only at département level for municipalities under 10,000 inhabitants, which is the origin of the small-town effect measured above.</li>
     <li>The same paper handles sampling noise with repeated realisations over random seeds, reporting the mean and range. The Stability section does the same for variants A and C: five populations and three simulations each.</li>
-    <li><b>Joubert and de Waal (2020)</b> generate chains with Bayesian networks and <b>Shone and Hillel (2024)</b> with deep generative models, judging output by its distribution and by how much of it is new. Both families are implemented here (a Bayesian network, a transformer and a variational autoencoder) and scored against matching on held-out respondents, with repeated splits.</li>
+    <li><b>Joubert and de Waal (2020)</b> generate chains with Bayesian networks and <b>Shone and Hillel (2024)</b> with deep generative models, judging output by its distribution and by how much of it is new. Both families are implemented here (a Bayesian network, a transformer, a variational autoencoder and a GAN) and scored against matching on held-out respondents, with repeated splits.</li>
   </ul></div>
 </section>
 
@@ -613,14 +642,16 @@ pytest                                        # 46 tests</code></pre>
       <tr><td>ENTD 2008 and EMP 2019 analysed by urban type</td><td><span class="status done">done</span></td></tr>
       <tr><td>Five eqasim variants generated and scored</td><td><span class="status done">done</span></td></tr>
       <tr><td>Distances by territory</td><td><span class="status done">done</span></td></tr>
-      <tr><td>Generators (Bayesian network, transformer, variational autoencoder) against matching on held-out respondents</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Generators (Bayesian network, transformer, variational autoencoder, GAN) against matching on held-out respondents</td><td><span class="status done">done</span></td></tr>
       <tr><td>Variants A and C simulated with MATSim (road network from OpenStreetMap, six GTFS timetables)</td><td><span class="status done">done</span></td></tr>
       <tr><td>Map by intercommunalité and commune; matching explorer</td><td><span class="status done">done</span></td></tr>
       <tr><td>Variants A and C repeated over five random seeds (three of them simulated)</td><td><span class="status done">done</span></td></tr>
       <tr><td>Regional survey (EDGT Loire-Atlantique 2015) as a second reference</td><td><span class="status done">done</span></td></tr>
       <tr><td>Territory analysis written as an eqasim stage, urban type for the regional survey and Java version fix as patches (<code>eqasim_contrib/</code>), tested on saved populations and on the survey files</td><td><span class="status done">done</span></td></tr>
-      <tr><td>The stage and the patches run inside a complete eqasim run</td><td><span class="status next">next</span></td></tr>
-      <tr><td>Populations built from the regional survey itself (variants F and G)</td><td><span class="status next">next</span></td></tr>
+      <tr><td>A matching stage that replaces eqasim's (structure of the day first, local and national respondents pooled), tried on the residents of variant A</td><td><span class="status done">done</span></td></tr>
+      <tr><td>Four-page technical note</td><td><span class="status done">done</span></td></tr>
+      <tr><td>The stages and the patches run inside a complete eqasim run (variants S and T)</td><td><span class="status next">next</span></td></tr>
+      <tr><td>Populations built from the regional survey with eqasim's own matching (variants F and G)</td><td><span class="status next">next</span></td></tr>
 
 
     </tbody>
@@ -633,7 +664,7 @@ pytest                                        # 46 tests</code></pre>
     <li>The simulation uses mode-choice parameters calibrated for Île-de-France and current timetables. Its levels are not a forecast for Loire-Atlantique; only differences between variants are read.</li>
     <li>Urban-unit status has four classes; a finer typology (density grid, accessibility) may show contrasts this one hides.</li>
     <li>The EMP weighting result follows the rule in the statistical office's note on the public files, applied here to people; the note does not treat immobility itself.</li>
-    <li>In the simulations about 3% of planned trips are missing from the output; the affected persons' days stop early. The cause was not established.</li>
+    <li>In the simulations about 3% of planned trips are missing from the output. When the last iteration ends, about 4,800 agents have not finished their day and none was removed, which accounts for 95% of the persons concerned. Their last recorded trip starts around noon. What holds them up was not identified.</li>
   </ul></div>
 </section>
 
@@ -860,7 +891,8 @@ function forest(parent, {title, rows, ref, refLabel, fmt, xmin, xmax}) {
     g.appendChild(svg('text', {x: labelW - 10, y: y + 4, 'text-anchor': 'end'}, r.name));
     g.appendChild(svg('line', {x1: x(r.v[1]), x2: x(r.v[2]), y1: y, y2: y, stroke: color, 'stroke-width': 2, 'stroke-linecap': 'round'}));
     g.appendChild(svg('circle', {cx: x(r.v[0]), cy: y, r: 5, fill: color, stroke: 'var(--surface)', 'stroke-width': 2}));
-    g.appendChild(svg('text', {x: x(r.v[2]) + 8, y: y + 4, class: 'val'}, fmt(r.v[0], 1)));
+    // a halo in the surface colour keeps the value readable where it crosses the reference line
+    g.appendChild(svg('text', {x: x(r.v[2]) + 8, y: y + 4, class: 'val', style: 'paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round'}, fmt(r.v[0], 1)));
     g.appendChild(svg('rect', {x: 0, y: y - rowH / 2, width: W, height: rowH, class: 'hit'}));
     hover(g, r.name, [{name: 'Mean', value: fmt(r.v[0], 1)}, {name: 'Range over splits', value: fmt(r.v[1], 1) + ' to ' + fmt(r.v[2], 1)}, {name: refLabel, value: fmt(ref, 1)}]);
     s.appendChild(g);
@@ -1292,19 +1324,35 @@ function render() {
     const G = DATA.generators, p1 = (v, d = 0) => pct(v, d), f3 = v => v.toFixed(3);
     const gh = document.getElementById('genhome'); gh.replaceChildren();
     const wrap = h('div', {style: 'max-width:620px'});
-    forest(wrap, {rows: G.methods.map(m => ({name: m.name, v: m.rural_home, aware: m.aware})), ref: G.observed_rural_home, refLabel: 'Observed', fmt: p1, xmin: 0.08, xmax: 0.20});
+    forest(wrap, {rows: G.methods.map(m => ({name: m.name, v: m.rural_home, aware: m.aware})), ref: G.observed_rural_home, refLabel: 'Observed', fmt: p1, xmin: 0.08, xmax: 0.24});
     gh.appendChild(wrap);
     const lg = document.getElementById('gen-legend'); lg.replaceChildren();
     [['var(--s1)', 'Sees the home territory'], ['var(--s2)', 'Does not']].forEach(([c, n]) => { const sp = h('span'); sp.appendChild(h('i', {class: 'box', style: 'background:' + c})); sp.appendChild(document.createTextNode(n)); lg.appendChild(sp); });
     table('genhome-table', ['Generator', 'Sees territory', 'Rural stay-home, mean', 'Range over splits'],
       G.methods.map(m => [m.name, m.aware ? 'yes' : 'no', pct(m.rural_home[0], 1), pct(m.rural_home[1], 1) + ' to ' + pct(m.rural_home[2], 1)]).concat([['Observed (held-out respondents)', '', pct(G.observed_rural_home, 1), '']]));
     const ge = document.getElementById('generror'); ge.replaceChildren();
-    forest(ge, {title: 'Rural residents', rows: G.methods.map(m => ({name: m.name, v: m.rural_error, aware: m.aware})), ref: G.floor_rural, refLabel: 'Floor', fmt: (v, d) => v.toFixed(d ? 3 : 2), xmin: 0.04, xmax: 0.16});
-    forest(ge, {title: 'All residents', rows: G.methods.map(m => ({name: m.name, v: m.all_error, aware: m.aware})), ref: G.floor_all, refLabel: 'Floor', fmt: (v, d) => v.toFixed(d ? 3 : 2), xmin: 0.04, xmax: 0.16});
+    forest(ge, {title: 'Rural residents', rows: G.methods.map(m => ({name: m.name, v: m.rural_error, aware: m.aware})), ref: G.floor_rural, refLabel: 'Floor', fmt: (v, d) => v.toFixed(d ? 3 : 2), xmin: 0.04, xmax: 0.24});
+    forest(ge, {title: 'All residents', rows: G.methods.map(m => ({name: m.name, v: m.all_error, aware: m.aware})), ref: G.floor_all, refLabel: 'Floor', fmt: (v, d) => v.toFixed(d ? 3 : 2), xmin: 0.04, xmax: 0.24});
     table('generror-table', ['Generator', 'Rural: mean', 'Rural: range', 'All: mean', 'All: range', 'Unreported chains'],
       G.methods.map(m => [m.name, f3(m.rural_error[0]), f3(m.rural_error[1]) + ' to ' + f3(m.rural_error[2]), f3(m.all_error[0]), f3(m.all_error[1]) + ' to ' + f3(m.all_error[2]), pct(m.novel, 1)])
         .concat([['Floor (survey against itself)', f3(G.floor_rural), '', f3(G.floor_all), '', '']]));
   }
+
+  // structured matching, tried on existing residents
+  const sc = document.getElementById('structuredcard');
+  if (DATA.structured && DATA.structured.scores.entd && DATA.local && DATA.local.fidelity.A && DATA.local.fidelity.C) {
+    const X = DATA.structured.scores, el = document.getElementById('structured'); el.replaceChildren();
+    const means = (source, reference) => X[source][reference].hellinger.map(v => v[0]);
+    const rows = ['A · default, local', 'C · urban type', 'S · structure first'], f3 = v => v.toFixed(3), short = T.map(t => t.replace(' city', ''));
+    heatGrid(el, {title: 'Against the national survey', sub: '· ENTD 2008', rows, cols: short, values: [DATA.fidelity.A, DATA.fidelity.C, means('entd', 'entd')], max: 0.2, fmt: f3, labelW: 150, cellH: 34});
+    heatGrid(el, {title: 'Against the regional survey', sub: '· EDGT 2015', rows, cols: short, values: [DATA.local.fidelity.A, DATA.local.fidelity.C, means('entd', 'edgt_44')], max: 0.2, fmt: f3, labelW: 150, cellH: 34});
+    const range = v => f3(v[0]) + (v[2] > v[1] ? ' (' + f3(v[1]) + ' to ' + f3(v[2]) + ')' : '');
+    const body = [['A · default, local donors', 'National survey', ...DATA.fidelity.A.map(f3)], ['A · default, local donors', 'Regional survey', ...DATA.local.fidelity.A.map(f3)],
+      ['C · urban type', 'National survey', ...DATA.fidelity.C.map(f3)], ['C · urban type', 'Regional survey', ...DATA.local.fidelity.C.map(f3)],
+      ['S · structure first, national survey as source', 'National survey', ...X.entd.entd.hellinger.map(range)], ['S · structure first, national survey as source', 'Regional survey', ...X.entd.edgt_44.hellinger.map(range)]];
+    if (X.edgt_44) body.push(['T · structure first, regional survey as source', 'National survey', ...X.edgt_44.entd.hellinger.map(range)], ['T · structure first, regional survey as source', 'Regional survey (its own source)', ...X.edgt_44.edgt_44.hellinger.map(range)]);
+    table('structured-table', ['Population', 'Reference', ...T], body);
+  } else if (sc) sc.hidden = true;
 
   // gap between rural and central-city residents
   const gc = document.getElementById('gapcard');

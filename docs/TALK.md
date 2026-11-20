@@ -24,8 +24,10 @@ Ten minutes, with the project page open. Each step names the section to show.
    is whether the model sees territory, not which model it is.
 7. **What I would do next** in the postdoc: richer territorial descriptors than
    four urban types, references that are local where they exist, and a
-   generator integrated as an eqasim stage. The territory analysis already
-   exists as a stage (`eqasim_contrib/`); the generators do not.
+   generator integrated as an eqasim stage. A first one exists
+   (`eqasim_contrib/`): it draws the structure of the day and then matches a
+   respondent, so it fits the pipeline. It has been tried on existing
+   residents, not yet in a full run.
 
 ## Questions to expect, with the honest answer
 
@@ -46,9 +48,16 @@ Ten minutes, with the project page open. Each step names the section to show.
   the two-reference comparison and the commune-level view. The generators are a
   first benchmark, not a contribution yet: they write the order of activities
   only, without times, so they cannot replace matching in the pipeline as they
-  are.
-- **What did you not have time to check?** The cause of the 3% of trips missing
-  in the simulation, the households without a home commune, and a population
-  built from the regional survey itself (variant F).
+  are. The structured-matching stage can, because it still ends with a real
+  respondent.
+- **Does the structured matching beat eqasim?** Not against the regional
+  survey: it lies between the two eqasim variants. The national survey has 254
+  rural respondents in the département, and pooling cannot invent what they do
+  not show. With the regional survey as source it follows that survey, which is
+  the expected result and not a validation.
+- **What did you not have time to check?** Why about 4,800 agents never finish
+  their day in the simulation (they explain the 3% of missing trips, but which
+  links or services hold them was not identified), the households without a
+  home commune, and populations generated from the regional survey itself.
 - **Your background is not transport.** Correct. Before this application I had
   not run eqasim; the page shows how I work in a new field.

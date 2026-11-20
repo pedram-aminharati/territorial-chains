@@ -5,6 +5,8 @@ The input is the trip table eqasim writes at the end of a MATSim run
 ``routed_distance`` in metres and ``travel_time`` in seconds.
 """
 
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -81,3 +83,47 @@ def convergence(modestats):
     order = {m: i for i, m in enumerate(_ordered(set(long["mode"])))}
     return long.sort_values(["iteration", "mode"], key=lambda s: s.map(order) if s.name == "mode" else s,
                             kind="stable").reset_index(drop=True)
+
+
+def unfinished_agents(log_text):
+    """Agents still on their way when each iteration's simulated day ends, from a MATSim log.
+
+    QSim prints the number of agents that have not finished their plan at every
+    simulated hour, and how many it has removed ("lost"). The last such line of
+    an iteration is the state at the end of the day. One row per iteration:
+    ``iteration``, ``end_hour``, ``active_at_end``, ``lost``.
+    """
+    status = re.compile(r"SIMULATION \(NEW QSim\) AT (\d+):(\d+):(\d+) : #active agents=(\d+) lost=(\d+)")
+    ends = re.compile(r"ITERATION (\d+) ENDS")
+    rows, last = [], None
+    for line in log_text.splitlines():
+        found = status.search(line)
+        if found:
+            h, m, sec, active, lost = (int(v) for v in found.groups())
+            last = (h + m / 60.0 + sec / 3600.0, active, lost)
+            continue
+        found = ends.search(line)
+        if found and last is not None:
+            rows.append({"iteration": int(found.group(1)), "end_hour": last[0], "active_at_end": last[1], "lost": last[2]})
+            last = None
+    return pd.DataFrame(rows, columns=["iteration", "end_hour", "active_at_end", "lost"])
+
+
+def missing_trips(planned_trips, trips):
+    """Planned against simulated trips, per person.
+
+    ``planned_trips`` is a Series indexed by person with the number of trips in the
+    plan. Returns one row of counts, and for the persons with and without missing
+    trips the median hour at which their last recorded trip starts.
+    """
+    done = trips.groupby("person_id").size().reindex(planned_trips.index).fillna(0)
+    short = done < planned_trips
+    last = trips.groupby("person_id")["departure_time"].max().reindex(planned_trips.index) / 3600.0
+    return pd.DataFrame([{
+        "persons": int(len(planned_trips)), "planned_trips": int(planned_trips.sum()), "simulated_trips": int(done.sum()),
+        "missing_trips": int((planned_trips - done).clip(lower=0).sum()),
+        "persons_with_missing_trips": int(short.sum()),
+        "persons_without_any_trip": int((short & (done == 0)).sum()),
+        "last_departure_hour_incomplete": float(last[short].median()),
+        "last_departure_hour_complete": float(last[~short & (planned_trips > 0)].median()),
+    }])

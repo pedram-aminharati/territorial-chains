@@ -1,8 +1,8 @@
 # Generators against statistical matching: first benchmark
 
 Run on 12 Nov 2026 with `scripts/benchmark_generators.py`, and again on 16 Nov 2026
-with the variational autoencoder added. The second run gave the same numbers as
-the first for the six earlier methods. Data: the 17,997
+with the variational autoencoder and then the GAN added. Each new run gave the
+same numbers as the one before for the methods already there. Data: the 17,997
 ENTD 2008 diary respondents, read through eqasim's cleaning stage. Protocol:
 five random splits stratified by urban type; 80% of respondents train every
 generator, the other 20% are the target. A generator sees only the target
@@ -20,6 +20,7 @@ same urban type: what sampling alone produces.
 | Bayesian network (pgmpy structure search, weighted tables) | graph learned from data | edge urban type to "goes out" imposed |
 | Autoregressive transformer (PyTorch, 2 layers) | attributes without urban type | all attributes |
 | Conditional variational autoencoder (PyTorch, recurrent encoder and decoder, 16 latent dimensions) | attributes without urban type | all attributes |
+| Conditional Wasserstein GAN with gradient penalty (PyTorch, all positions written at once) | attributes without urban type | all attributes |
 
 ## Rural residents staying home (observed 16.8%)
 
@@ -29,10 +30,13 @@ same urban type: what sampling alone produces.
 | Bayesian network | 12.6% | 16.3% |
 | Transformer | 12.4% | 16.8% |
 | Autoencoder | 12.0% | 15.3% |
+| GAN | 15.0% | 19.9% |
 
 The result depends on whether the generator sees territory, not on its family.
 The autoencoder recovers most of the difference but not all of it (14.4% to
-16.2% over the five splits).
+16.2% over the five splits). The GAN responds to territory too, but overstates
+staying home with and without it (14.7% and 15.4% over all residents, against
+12.8% observed).
 
 ## Error on the chain distribution (Hellinger, lower is better)
 
@@ -47,15 +51,22 @@ The autoencoder recovers most of the difference but not all of it (14.4% to
 | Transformer, with territory | 0.105 [0.088, 0.118] | 0.069 |
 | Autoencoder, without territory | 0.115 [0.103, 0.123] | 0.053 |
 | Autoencoder, with territory | 0.092 [0.078, 0.100] | 0.051 |
+| GAN, without territory | 0.179 [0.171, 0.189] | 0.158 |
+| GAN, with territory | 0.184 [0.164, 0.211] | 0.149 |
 
 - No generator is clearly better than matching with the urban type on this
   test. The Bayesian network with a territory edge and the autoencoder with
   territory are level with it for rural residents, and their ranges over splits
   overlap.
-- The transformer is the least faithful to the observed distribution. The two
-  neural models are the only generators that write chains absent from their
-  training data (12% of the transformer's output, 13% of the autoencoder's);
-  matching and the Bayesian network reuse reported chains by construction.
+- The GAN is far behind every other generator, about twice the distance of the
+  transformer for all residents. It writes every position of the chain at once
+  from a noise vector and was trained for a fixed number of steps, since it has
+  no likelihood to select on.
+- Among the others the transformer is the least faithful to the observed
+  distribution. The three neural models are the only generators that write
+  chains absent from their training data (12% of the transformer's output, 13%
+  of the autoencoder's, 12% of the GAN's); matching and the Bayesian network
+  reuse reported chains by construction.
 - The autoencoder's latent vector is in use: the KL term is 1.1 nats per chain
   on the validation respondents (0.9 to 1.2 over splits).
 - In central cities, suburbs and isolated cities every method is within the
@@ -86,6 +97,7 @@ and a regional effect at once, where matching runs out of donors.
 ## Limits
 
 - One survey (ENTD 2008), national hold-out, not a Loire-Atlantique population.
-- Small models and no tuning; the transformer and autoencoder results are lower
-  bounds on what those families can do. No adversarial model (GAN) was tried.
+- Small models and no tuning; the transformer, autoencoder and GAN results are
+  lower bounds on what those families can do. The GAN in particular is a plain
+  fully connected one and decodes the most likely activity at each position.
 - Chains only: no start times or durations yet.

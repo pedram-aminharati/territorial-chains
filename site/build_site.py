@@ -41,6 +41,8 @@ GENERATORS = [
     ("autoregressive_territory", "Transformer, with territory",     "Autoregressive",       True),
     ("vae_blind",                "Autoencoder, without territory",  "Variational autoencoder", False),
     ("vae_territory",            "Autoencoder, with territory",     "Variational autoencoder", True),
+    ("gan_blind",                "GAN, without territory",          "Adversarial",          False),
+    ("gan_territory",            "GAN, with territory",             "Adversarial",          True),
 ]
 
 
@@ -250,6 +252,25 @@ def collect(results):
     if generated:
         data["gaps"] = {"indicators": GAPS, "generated": generated, "observed": observed, "regional": regional}
 
+    # --- structured matching tried on existing residents (optional: scripts/try_matching_stage.py)
+    structured_path = os.path.join(results, "structured", "summary.csv")
+    if os.path.exists(structured_path):
+        summary = pd.read_csv(structured_path)
+        draws = pd.read_csv(os.path.join(results, "structured", "draws.csv"))
+        scores = {}
+        for (source, reference), group in summary.groupby(["source", "reference"]):
+            rows = group.set_index("urban_type").loc[URBAN]
+            scores.setdefault(source, {})[reference] = {
+                quantity: [[float(r["%s_%s" % (quantity, s)]) for s in ("mean", "min", "max")] for _, r in rows.iterrows()]
+                for quantity in ("hellinger", "immobile_share", "tours_per_mobile")}
+        national = draws[draws["source"] == "entd"]
+        data["structured"] = {
+            "scores": scores, "draws": int(len(national)),
+            "prior": sorted({float(v) for v in national["prior_strength"]}),
+            "local": float(national["respondents_from_study_area"].mean()),
+            "matched_all": float(national["matched_all_attributes"].mean()),
+        }
+
     data["meta"] = {"persons": persons, "built": date.today().strftime("%d %B %Y"), "eqasim": "1.5.0"}
     return data
 
@@ -340,9 +361,18 @@ def narrative(data):
     g = data.get("generators")
     if g:
         m = {x["key"]: x for x in g["methods"]}
-        blind = [x["rural_home"][0] for x in g["methods"] if not x["aware"]]
-        aware = [x["rural_home"][0] for x in g["methods"] if x["aware"]]
+        # The GAN is reported apart: it misses the level of staying home whatever it is given.
+        blind = [x["rural_home"][0] for x in g["methods"] if not x["aware"] and not x["key"].startswith("gan")]
+        aware = [x["rural_home"][0] for x in g["methods"] if x["aware"] and not x["key"].startswith("gan")]
         words = {2: "two", 3: "three", 4: "four", 5: "five"}
+        gan = {k: m.get("gan_" + k) for k in ("blind", "territory")}
+        values.update({key: "" for key in ("gen_gan_blind", "gen_gan_aware", "gen_gan_rural", "gen_gan_all", "gen_gan_novel")})
+        if gan["blind"] and gan["territory"]:
+            values.update({
+                "gen_gan_blind": pct(gan["blind"]["rural_home"][0], 1), "gen_gan_aware": pct(gan["territory"]["rural_home"][0], 1),
+                "gen_gan_rural": "%.3f" % gan["territory"]["rural_error"][0], "gen_gan_all": "%.3f" % gan["territory"]["all_error"][0],
+                "gen_gan_novel": pct(gan["territory"]["novel"], 0),
+            })
         values.update({
             "gen_splits": str(g["splits"]),
             "gen_obs_rural": pct(g["observed_rural_home"], 1),
@@ -445,6 +475,25 @@ def narrative(data):
             "gap_tours_nat": tours(obs["tours_per_mobile"]), "gap_tours_reg": tours(reg["tours_per_mobile"]),
             "gap_tours_A": tours(gen["A"]["tours_per_mobile"][0]), "gap_tours_C": tours(gen["C"]["tours_per_mobile"][0]),
         })
+    st = data.get("structured")
+    st_keys = ["st_draws", "st_prior", "st_home_rural", "st_home_rural_C", "st_regional_low", "st_regional_high",
+               "st_local", "st_tours_gap"]
+    values.update({key: "" for key in st_keys})
+    if st and "entd" in st["scores"]:
+        s = st["scores"]["entd"]
+        prior = ["%g" % v for v in st["prior"]]
+        values.update({
+            "st_draws": str(st["draws"]),
+            "st_prior": prior[0] if len(prior) == 1 else " or ".join([", ".join(prior[:-1]), prior[-1]]),
+            "st_home_rural": pct(s["entd"]["immobile_share"][3][0], 1),
+            "st_home_rural_C": pct(ind["C"]["immobile_share"][3], 1),
+            "st_local": pct(st["local"], 0),
+            "st_tours_gap": ("%+.2f" % (s["entd"]["tours_per_mobile"][3][0] - s["entd"]["tours_per_mobile"][0][0])).replace("-", "\u2212"),
+        })
+        regional = st["scores"].get("edgt_44", {}).get("edgt_44")
+        if regional:
+            values.update({"st_regional_low": "%.3f" % min(v[0] for v in regional["hellinger"]),
+                           "st_regional_high": "%.3f" % max(v[0] for v in regional["hellinger"])})
     e = data.get("explorer")
     if e:
         values.update({

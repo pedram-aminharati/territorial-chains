@@ -1,0 +1,2 @@
+persons,planned_trips,simulated_trips,missing_trips,persons_with_missing_trips,persons_without_any_trip,last_departure_hour_incomplete,last_departure_hour_complete,iterations,end_hour,active_at_end,lost
+147129,514190,497375,16815,5089,1646,12.106666666666667,17.789444444444445,60,30.0,4830,0

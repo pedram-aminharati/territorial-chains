@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Add this project's contributions to an eqasim-france checkout (v1.5.0).
 #
-#   bash scripts/install_eqasim_contrib.sh                      # the analysis stage only
+#   bash scripts/install_eqasim_contrib.sh                      # the two stages only
 #   bash scripts/install_eqasim_contrib.sh edgt_44_urban_type   # and a patch, by name
 #   EQASIM=/other/checkout bash scripts/install_eqasim_contrib.sh java_version_check
 #
-# The stage is a new file and changes nothing else. A patch changes existing stages:
+# The stages are new files and change nothing else. A patch changes existing stages:
 # synpp notices and runs those stages and everything after them again. Read
 # eqasim_contrib/README.md before applying java_version_check to a checkout whose
 # simulation cache you want to keep.
@@ -21,6 +21,8 @@ fi
 
 cp "$CONTRIB/analysis/synthesis/chains_by_territory.py" "$CODE/analysis/synthesis/"
 echo "stage copied: analysis.synthesis.chains_by_territory"
+cp "$CONTRIB/synthesis/population/matched_structured.py" "$CODE/synthesis/population/"
+echo "stage copied: synthesis.population.matched_structured"
 
 for name in "$@"; do
   patch="$CONTRIB/patches/$name.patch"

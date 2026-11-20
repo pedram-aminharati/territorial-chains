@@ -10,6 +10,8 @@ chain for each target person from that person's attributes alone (``sample``):
                               activity at a time, conditioned on the attributes
 ``VAEGenerator``              a conditional variational autoencoder: a latent vector
                               summarises the whole day and a recurrent decoder writes it
+``GANGenerator``              a conditional Wasserstein GAN that writes all positions of
+                              the chain at once from a noise vector
 
 The optional dependencies (pgmpy, torch, an eqasim checkout) are imported only
 by the generator that needs them.
@@ -482,3 +484,132 @@ class VAEGenerator(_TokenCoding):
                 if not alive.any():
                     break
         return self._decode(torch.stack(written, dim=1).numpy())
+
+
+# --------------------------------------------------------------------------- adversarial
+
+class GANGenerator(_TokenCoding):
+    """A conditional Wasserstein GAN with gradient penalty over whole chains.
+
+    The generator turns a noise vector and the person's attributes into one
+    distribution over activities for every position of the chain, all at once;
+    a critic sees either such an output or a reported chain, with the same
+    attributes, and learns to tell them apart. There is no likelihood, so the
+    number of training steps is fixed in advance instead of being selected on
+    held-out respondents. Training batches are drawn in proportion to the
+    survey weights. The chain is read off as the most likely activity at each
+    position, up to the first end mark.
+
+    This is the family Shone and Hillel compare with their autoencoders.
+    """
+
+    def __init__(self, attributes=ATTRIBUTES, d_model=64, hidden=256, noise=32, max_length=16, steps=2500,
+                 critic_steps=5, batch_size=256, learning_rate=1e-4, penalty=10.0, seed=0):
+        self.attributes = list(attributes)
+        self.d_model, self.hidden, self.noise, self.max_length = d_model, hidden, noise, max_length
+        self.steps, self.critic_steps, self.batch_size = steps, critic_steps, batch_size
+        self.lr, self.penalty, self.seed = learning_rate, penalty, seed
+
+    # positions hold: 0 pad, 1 end, 2.. activities (the begin mark is not generated)
+    def _one_hot(self, chains):
+        import torch
+        tokens = self._encode(chains)[:, 1:]
+        tokens = torch.where(tokens > 0, tokens - 1, tokens)
+        return torch.nn.functional.one_hot(tokens, len(ALPHABET) + 2).float()
+
+    def _build(self):
+        import torch
+        from torch import nn
+
+        d, n_attr, hidden = self.d_model, len(self.attributes), self.hidden
+        sizes = [len(self.levels[a]) + 1 for a in self.attributes]
+        length, vocabulary = self.max_length + 1, len(ALPHABET) + 2
+
+        class Context(nn.Module):
+            def __init__(inner):
+                super().__init__()
+                inner.attribute = nn.ModuleList([nn.Embedding(s, d) for s in sizes])
+
+            def forward(inner, attributes):
+                if not n_attr:
+                    return torch.zeros(attributes.shape[0], d)
+                return sum(e(attributes[:, i]) for i, e in enumerate(inner.attribute))
+
+        class Generator(nn.Module):
+            def __init__(inner):
+                super().__init__()
+                inner.context = Context()
+                inner.body = nn.Sequential(nn.Linear(self.noise + d, hidden), nn.ReLU(), nn.Linear(hidden, hidden), nn.ReLU(),
+                                           nn.Linear(hidden, length * vocabulary))
+
+            def forward(inner, z, attributes):
+                logits = inner.body(torch.cat([z, inner.context(attributes)], dim=1))
+                return torch.softmax(logits.reshape(-1, length, vocabulary), dim=2)
+
+        class Critic(nn.Module):
+            def __init__(inner):
+                super().__init__()
+                inner.context = Context()
+                inner.body = nn.Sequential(nn.Linear(length * vocabulary + d, hidden), nn.LeakyReLU(0.2),
+                                           nn.Linear(hidden, hidden), nn.LeakyReLU(0.2), nn.Linear(hidden, 1))
+
+            def forward(inner, x, attributes):
+                return inner.body(torch.cat([x.reshape(x.shape[0], -1), inner.context(attributes)], dim=1)).squeeze(1)
+
+        return Generator(), Critic()
+
+    def fit(self, train):
+        import torch
+
+        torch.manual_seed(self.seed)
+        self.levels = {a: {v: i + 1 for i, v in enumerate(sorted(train[a].astype(str).unique()))} for a in self.attributes}
+        real, attributes = self._one_hot(train["chain"].to_numpy()), self._attributes(train)
+        weights = torch.tensor(_normalised_weights(train), dtype=torch.float32)
+
+        self.generator, critic = self._build()
+        opt_g = torch.optim.Adam(self.generator.parameters(), lr=self.lr, betas=(0.5, 0.9))
+        opt_c = torch.optim.Adam(critic.parameters(), lr=self.lr, betas=(0.5, 0.9))
+
+        def batch():
+            idx = torch.multinomial(weights, self.batch_size, replacement=True)
+            return real[idx], attributes[idx]
+
+        self.history = []
+        for _ in range(self.steps):
+            for _ in range(self.critic_steps):
+                x, a = batch()
+                with torch.no_grad():
+                    fake = self.generator(torch.randn(len(x), self.noise), a)
+                mix = torch.rand(len(x), 1, 1)
+                between = (mix * x + (1 - mix) * fake).requires_grad_(True)
+                gradient = torch.autograd.grad(critic(between, a).sum(), between, create_graph=True)[0]
+                slope = gradient.reshape(len(x), -1).norm(dim=1)
+                distance = critic(x, a).mean() - critic(fake, a).mean()
+                loss = -distance + self.penalty * ((slope - 1) ** 2).mean()
+                opt_c.zero_grad()
+                loss.backward()
+                opt_c.step()
+            x, a = batch()
+            loss = -critic(self.generator(torch.randn(len(x), self.noise), a), a).mean()
+            opt_g.zero_grad()
+            loss.backward()
+            opt_g.step()
+            self.history.append(float(distance.detach()))
+        self.generator.eval()
+        self.critic_distance = float(np.mean(self.history[-100:]))      # what the critic still sees, at the end
+        return self
+
+    def sample(self, target, rng):
+        import torch
+
+        torch.manual_seed(int(rng.integers(1 << 30)))
+        with torch.no_grad():
+            tokens = self.generator(torch.randn(len(target), self.noise), self._attributes(target)).argmax(dim=2).numpy()
+        letters = np.array(list("??" + ALPHABET))
+        out = []
+        for row in tokens:
+            ends = np.flatnonzero(row <= 1)                         # the chain stops at the first end mark or pad
+            row = row[:ends[0]] if len(ends) else row
+            chain = "".join(letters[row])
+            out.append(chain if chain else "h")
+        return np.array(out, dtype=object)

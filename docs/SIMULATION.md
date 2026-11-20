@@ -57,7 +57,11 @@ and minutes per resident, by urban type of the home commune.
 Both runs were stopped by eqasim's convergence rule, A after 60 iterations and C after 57.
 Each simulated the population it was built from: persons and donors are identical to the
 earlier A and C runs, and 96% of persons have the same number of trips in the simulation
-output as in the population (the rest lose trips in the simulation; this was not investigated).
+output as in the population. The rest are agents that never finish their day: when the last
+iteration ends at 30:00, 4,830 agents in A and 4,592 in C are still under way and none was
+removed, which accounts for 95% of the persons with missing trips (5,089 and 4,819). Their
+last recorded trip starts around noon. What holds them was not identified
+(`results/<variant>_sim/sim_unfinished.csv`, note 6 in `docs/UPSTREAM_NOTES.md`).
 In C, 105 matched persons whose household has no home commune are left out.
 
 | Per resident | Variant | Central city | Suburb | Isolated city | Rural | All |
@@ -76,7 +80,7 @@ In C, 105 matched persons whose household has no home commune are left out.
 What changes between A and C is how often people travel: rural residents make 18% fewer trips
 in C. What does not change much is how far they drive: car kilometres per resident differ by
 -2.9% in rural communes and -0.7% overall. With one seed, differences of that size cannot be
-told apart from noise.
+told apart from noise; over three seeds they keep their sign (`docs/SEEDS.md`).
 
 A warning sign for the levels: the Île-de-France mode-choice model gives rural residents a higher
 bike share than central-city residents. Only A-against-C differences are used.
